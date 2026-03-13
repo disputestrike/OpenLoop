@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenLoop - Design Canvas (canonical reference)</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: linear-gradient(135deg, #0052FF, #00FF88); color: #0A0A0A; overflow-x: auto; }
+        .canvas-container { width: 100%; min-height: 100vh; padding: 20px; background: white; margin: 20px auto; max-width: 1400px; border-radius: 12px; box-shadow: 0 20px 60px rgba(0, 82, 255, 0.3); }
+        .header { text-align: center; padding: 40px 0; background: linear-gradient(135deg, #0052FF, #00FF88); color: white; border-radius: 12px; margin-bottom: 40px; }
+        .header h1 { font-size: 48px; font-weight: 900; margin-bottom: 16px; letter-spacing: -2px; }
+        .header p { font-size: 20px; opacity: 0.9; max-width: 800px; margin: 0 auto; }
+        .section { margin-bottom: 60px; padding: 30px; border: 2px solid #f0f0f0; border-radius: 12px; background: #fafafa; }
+        .section-title { font-size: 28px; font-weight: 800; color: #0052FF; margin-bottom: 24px; border-bottom: 3px solid #00FF88; padding-bottom: 12px; }
+        .ai-agent-card { background: linear-gradient(135deg, #0052FF, #00FF88); color: white; padding: 20px; border-radius: 12px; margin: 15px 0; text-align: center; }
+        .trust-score { display: inline-flex; align-items: center; background: rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 20px; margin: 10px 0; }
+        .activity-item { display: flex; align-items: center; padding: 12px; margin: 8px 0; background: white; border-radius: 8px; border-left: 4px solid #00FF88; }
+        .chat-bubble { background: #f0f0f0; padding: 12px 16px; border-radius: 18px; margin: 10px 0; max-width: 280px; }
+        .chat-bubble.ai { background: linear-gradient(135deg, #0052FF, #00FF88); color: white; margin-left: auto; margin-right: 0; }
+        .desktop-mockup { background: #2c3e50; border-radius: 8px; padding: 20px; margin: 20px 0; color: white; }
+        .window-bar { display: flex; align-items: center; padding: 10px; background: #34495e; border-radius: 8px 8px 0 0; margin: -20px -20px 20px -20px; }
+        .dashboard-grid { display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 20px; margin: 20px 0; }
+        .widget { background: rgba(255,255,255,0.1); padding: 20px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); }
+        .progress-bar { width: 100%; height: 8px; background: rgba(255,255,255,0.2); border-radius: 4px; overflow: hidden; margin: 10px 0; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, #0052FF, #00FF88); transition: width 0.3s ease; }
+        .metric-value { font-size: 24px; font-weight: 800; color: #00FF88; }
+        .safety-section { background: linear-gradient(135deg, #28a745, #20c997); color: white; padding: 30px; border-radius: 12px; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <div class="canvas-container">
+        <div class="header">
+            <h1>OpenLoop</h1>
+            <p>Design Canvas — canonical visual reference. Build the app to match this. See OPENLOOP_DESIGN_SPEC.md.</p>
+        </div>
+        <div class="section">
+            <h2 class="section-title">Mobile: Agent card + Trust + Activity</h2>
+            <div class="ai-agent-card">
+                <div><strong>Your Loop: Marcus</strong></div>
+                <div class="trust-score">Trust Score: 87%</div>
+                <div style="margin-top: 15px; font-size: 14px;">"Good morning! Ready to tackle your day together?"</div>
+            </div>
+            <div class="activity-item"><span style="margin-right:8px">✅</span> Negotiated phone bill - saved $47</div>
+            <div class="activity-item"><span style="margin-right:8px">✅</span> Scheduled dentist appointment</div>
+        </div>
+        <div class="section">
+            <h2 class="section-title">Chat: User (gray) / AI (gradient)</h2>
+            <div class="chat-bubble">Book me a flight to Miami</div>
+            <div class="chat-bubble ai">I found 3 options. Best deal: $287. Shall I book it?</div>
+        </div>
+        <div class="section">
+            <h2 class="section-title">Desktop: 3-column dashboard</h2>
+            <div class="desktop-mockup">
+                <div class="window-bar"><span style="margin-left:16px; font-weight:600">OpenLoop Dashboard - Your Loop: Marcus</span></div>
+                <div class="dashboard-grid">
+                    <div class="widget"><h4>Agent Status</h4><div class="progress-bar"><div class="progress-fill" style="width:87%"></div></div>Trust Score: 87%</div>
+                    <div class="widget"><h4>Live Agent Activity</h4><p style="color:#0052FF">"I'm negotiating with Comcast AI right now..."</p></div>
+                    <div class="widget"><h4>Today's Achievements</h4><div class="metric-value">$247</div>Value Created</div>
+                </div>
+            </div>
+        </div>
+        <div class="section">
+            <h2 class="section-title">Safety</h2>
+            <div class="safety-section">Biometric · Encryption · Content filter · Human oversight · Audit · Legal</div>
+        </div>
+    </div>
+</body>
+</html>

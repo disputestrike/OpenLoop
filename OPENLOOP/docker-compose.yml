@@ -1,0 +1,38 @@
+# OpenLoop — PostgreSQL + Redis for local/dev
+# Run: docker compose up -d
+# Then set DATABASE_URL=postgresql://postgres:postgres@localhost:5433/openloop in app/.env
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: openloop-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: openloop
+    ports:
+      - "5433:5432"
+    volumes:
+      - openloop_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d openloop"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: openloop-redis
+    ports:
+      - "6380:6379"
+    volumes:
+      - openloop_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  openloop_pgdata:
+  openloop_redis:

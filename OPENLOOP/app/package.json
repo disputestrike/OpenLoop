@@ -1,0 +1,44 @@
+{
+  "name": "openloop-app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "dev:open": "next dev -p 3004",
+    "dev:3005": "next dev -p 3005",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "db:migrate": "node scripts/run-migrate.js",
+    "db:seed": "node scripts/seed.js",
+    "db:seed-live": "node scripts/seed-live.js",
+    "engagement": "node scripts/daily-loop-engagement.js",
+    "loops:walk": "node scripts/loops-walk.js",
+    "seed:world": "node scripts/seed-world.js",
+    "world:go": "node scripts/seed-world-then-walk.js",
+    "bootstrap": "node scripts/bootstrap-dynamic.js",
+    "db:seed-100k": "node scripts/seed-100k.js",
+    "test": "node scripts/test-run.js",
+    "test:edge": "node scripts/test-edge-cases.js",
+    "check": "node scripts/check-all.js",
+    "smoke": "node scripts/smoke.js",
+    "verify": "node scripts/verify-all.js"
+  },
+  "dependencies": {
+    "next": "14.2.18",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "pg": "^8.13.1",
+    "ioredis": "^5.4.1",
+    "nanoid": "^5.0.9",
+    "resend": "^4.0.1"
+  },
+  "devDependencies": {
+    "dotenv": "^16.4.5",
+    "@types/node": "^22.9.0",
+    "@types/pg": "^8.11.6",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "typescript": "^5.6.3"
+  }
+}

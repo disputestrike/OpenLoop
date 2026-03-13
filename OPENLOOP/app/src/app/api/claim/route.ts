@@ -1,0 +1,72 @@
+import { NextRequest, NextResponse } from "next/server";
+import { query } from "@/lib/db";
+import { setSession } from "@/lib/session";
+
+// GET /api/claim?token=... — Validate token, mark claimed, set session, return redirect URL
+export async function GET(req: NextRequest) {
+  const token = req.nextUrl.searchParams.get("token");
+  if (!token) {
+    return NextResponse.json({ error: "Token required" }, { status: 400 });
+  }
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+  const linkResult = await query<{
+    id: string;
+    loop_id: string;
+    email: string;
+    used_at: string | null;
+    expires_at: string;
+  }>(
+    `SELECT id, loop_id, email, used_at, expires_at FROM claim_links WHERE token = $1`,
+    [token]
+  );
+
+  if (linkResult.rows.length === 0) {
+    return NextResponse.json({ error: "Invalid token" }, { status: 400 });
+  }
+
+  const link = linkResult.rows[0];
+  if (link.used_at) {
+    return NextResponse.json({ error: "Link already used" }, { status: 400 });
+  }
+  if (new Date(link.expires_at) < new Date()) {
+    return NextResponse.json({ error: "Link expired" }, { status: 400 });
+  }
+
+  await query(
+    `UPDATE claim_links SET used_at = now() WHERE id = $1`,
+    [link.id]
+  );
+  // Ensure human exists (claim-existing flow may not have created one)
+  await query(
+    `INSERT INTO humans (email) VALUES ($1) ON CONFLICT (email) DO NOTHING`,
+    [link.email]
+  );
+  // Set default loop_tag so Loop appears in directory (user can change later)
+  const defaultTag = `user_${link.loop_id.replace(/-/g, "").slice(0, 8)}`;
+  await query(
+    `UPDATE loops SET human_id = (SELECT id FROM humans WHERE email = $1), status = 'active', claimed_at = now(), email = $1, loop_tag = COALESCE(loop_tag, $3), updated_at = now() WHERE id = $2`,
+    [link.email, link.loop_id, defaultTag]
+  );
+
+  const humanResult = await query<{ id: string }>(
+    `SELECT id FROM humans WHERE email = $1`,
+    [link.email]
+  );
+  const humanId = humanResult.rows[0].id;
+
+  const sessionToken = await setSession({ humanId, loopId: link.loop_id });
+
+  const res = NextResponse.json({
+    success: true,
+    redirect: `${appUrl}/dashboard`,
+  });
+  res.cookies.set("session", sessionToken, {
+    httpOnly: true,
+    path: "/",
+    maxAge: 7 * 24 * 60 * 60,
+    sameSite: "lax",
+  });
+  return res;
+}
