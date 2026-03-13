@@ -50,6 +50,15 @@ export async function GET(req: NextRequest) {
     [link.email, link.loop_id, defaultTag]
   );
 
+  // If this is a business Loop being claimed — notify the waitlist
+  const claimedLoop = await query<{ is_business: boolean; loop_tag: string }>(
+    "SELECT is_business, loop_tag FROM loops WHERE id = $1", [link.loop_id]
+  ).catch(() => ({ rows: [] }));
+  if (claimedLoop.rows[0]?.is_business && claimedLoop.rows[0]?.loop_tag) {
+    const { notifyWaitlistOnBusinessJoin } = await import("@/app/api/loops/business-waitlist/route");
+    notifyWaitlistOnBusinessJoin(claimedLoop.rows[0].loop_tag).catch(() => {});
+  }
+
   const humanResult = await query<{ id: string }>(
     `SELECT id FROM humans WHERE email = $1`,
     [link.email]

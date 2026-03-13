@@ -327,11 +327,44 @@ export async function runLoopToLoopNegotiation(params: {
       const prev = lr.rows[0]?.trust_score || 0;
       const newScore = Math.min(100, prev + 2);
       await query("UPDATE loops SET trust_score = $1, updated_at = now() WHERE id = $2", [newScore, loopId]);
+      // Check trust milestones
+      const milestones = [25, 50, 75, 90, 96];
+      if (milestones.includes(newScore)) {
+        const loopData = await query<{ email: string | null }>(
+          "SELECT h.email FROM loops l LEFT JOIN humans h ON l.human_id = h.id WHERE l.id = $1", [loopId]
+        ).catch(() => ({ rows: [] }));
+        if (loopData.rows[0]?.email) {
+          const { notifyTrustMilestone } = await import("./notifications");
+          notifyTrustMilestone({ email: loopData.rows[0].email, loopTag: buyer.loop_tag, trustScore: newScore }).catch(() => {});
+        }
+      }
     }
     await query(
       `INSERT INTO activities (loop_id, title, kind) VALUES ($1, $2, 'deal')`,
       [buyerLoopId, `@${buyer.loop_tag} negotiated with @${businessLoop.loop_tag} — ${subject}: ${currentValue} → ${agreedValue} ✓`]
     ).catch(() => {});
+
+    // Send deal notification to buyer
+    const buyerData = await query<{ email: string | null; phone_number: string | null }>(
+      "SELECT h.email, l.phone_number FROM loops l LEFT JOIN humans h ON l.human_id = h.id WHERE l.id = $1",
+      [buyerLoopId]
+    ).catch(() => ({ rows: [] }));
+    const buyerContact = buyerData.rows[0];
+    if (buyerContact) {
+      const currentNum = parseFloat(currentValue.replace(/[^0-9.]/g, "")) || 0;
+      const agreedNum = parseFloat(agreedValue.replace(/[^0-9.]/g, "")) || 0;
+      const saved = currentNum > agreedNum ? `$${(currentNum - agreedNum).toFixed(2)}` : "";
+      const { notifyDealReached } = await import("./notifications");
+      notifyDealReached({
+        email: buyerContact.email,
+        phone: buyerContact.phone_number,
+        loopTag: buyer.loop_tag,
+        businessLoopTag: businessLoop.loop_tag,
+        subject,
+        agreedValue,
+        savedAmount: saved || undefined,
+      }).catch(() => {});
+    }
 
     // Notify buyer in chat
     await query(

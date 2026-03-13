@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import WalletPanel from "./WalletPanel";
 import FirstActionPrompt from "./FirstActionPrompt";
 import LoopShareCard from "./LoopShareCard";
+import InboxPanel from "./InboxPanel";
 
 type Me = {
   humanId: string;
@@ -293,6 +294,7 @@ export default function DashboardPage() {
   const tabs = [
     { id: "chat", label: "💬 Chat" },
     { id: "wallet", label: "💰 Wallet" },
+    { id: "inbox", label: "📥 Inbox" },
     { id: "share", label: "🔗 Share" },
     { id: "settings", label: "⚙️ Settings" },
   ] as const;
@@ -373,6 +375,13 @@ export default function DashboardPage() {
       {activeTab === "wallet" && (
         <div>
           <WalletPanel />
+        </div>
+      )}
+
+      {/* ── TAB: INBOX ── */}
+      {activeTab === "inbox" && (
+        <div>
+          <InboxPanel />
         </div>
       )}
 
