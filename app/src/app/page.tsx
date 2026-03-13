@@ -334,6 +334,76 @@ function StayInTheLoop() {
   );
 }
 
+function LoopToLoopSection() {
+  const steps = [
+    { icon: "🔍", label: "Ben's Loop searches for @Comcast in the directory" },
+    { icon: "🤝", label: "@Comcast's Loop accepts the negotiation contract" },
+    { icon: "💬", label: "Two Loops exchange offers autonomously — no human needed" },
+    { icon: "✅", label: "Deal reached: $127/mo → $89/mo. Logged to wallet." },
+  ];
+  return (
+    <section style={{ padding: "3rem 1.5rem", background: "linear-gradient(135deg, #0F172A 0%, #1E3A8A 100%)" }}>
+      <div style={{ maxWidth: "64rem", margin: "0 auto" }}>
+        <div style={{ textAlign: "center", marginBottom: "2rem" }}>
+          <div style={{ fontSize: "0.75rem", letterSpacing: "0.1em", color: "#60A5FA", fontWeight: 600, marginBottom: "0.75rem" }}>THE CORE INNOVATION</div>
+          <h2 style={{ fontSize: "clamp(1.5rem,3vw,2rem)", fontWeight: 800, color: "white", marginBottom: "0.75rem" }}>
+            Loop talks to Loop
+          </h2>
+          <p style={{ color: "#94A3B8", maxWidth: "36rem", margin: "0 auto", lineHeight: 1.6 }}>
+            When Ben wants to lower his Comcast bill, his Loop doesn&apos;t give him a script. It finds Comcast&apos;s Loop and negotiates directly. Agent to agent. No human in the middle.
+          </p>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem", marginBottom: "1.5rem" }}>
+          {steps.map((s, i) => (
+            <div key={i} style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "12px", padding: "1.25rem" }}>
+              <div style={{ fontSize: "1.5rem", marginBottom: "0.5rem" }}>{s.icon}</div>
+              <div style={{ fontSize: "0.875rem", color: "rgba(255,255,255,0.85)", lineHeight: 1.5 }}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{ textAlign: "center" }}>
+          <Link href="/businesses" style={{ display: "inline-block", padding: "0.75rem 1.75rem", borderRadius: "10px", background: "#0052FF", color: "white", fontWeight: 700, textDecoration: "none", fontSize: "0.95rem" }}>
+            Browse Business Loops →
+          </Link>
+          <span style={{ margin: "0 1rem", color: "#475569" }}>·</span>
+          <Link href="/how-it-works" style={{ color: "#60A5FA", textDecoration: "none", fontSize: "0.9rem" }}>
+            How it works →
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function BusinessLoopCTA() {
+  return (
+    <section style={{ padding: "3rem 1.5rem", background: "#F8FAFC", borderTop: "1px solid var(--openloop-border)" }}>
+      <div style={{ maxWidth: "64rem", margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.5rem" }}>
+        <div style={{ background: "white", border: "1px solid var(--openloop-border)", borderRadius: "12px", padding: "1.5rem" }}>
+          <div style={{ fontWeight: 800, fontSize: "1.1rem", marginBottom: "0.5rem" }}>🏢 For businesses</div>
+          <p style={{ color: "#64748B", fontSize: "0.875rem", lineHeight: 1.6, marginBottom: "1rem" }}>
+            Deploy a Business Loop. Handle thousands of customer negotiations simultaneously. One identity, unlimited conversations.
+          </p>
+          <div style={{ fontSize: "0.8rem", color: "#64748B", marginBottom: "1rem" }}>Starting at $499/month · up to 500 concurrent</div>
+          <Link href="/business" style={{ display: "inline-block", padding: "0.625rem 1.25rem", borderRadius: "8px", background: "#0052FF", color: "white", fontWeight: 600, textDecoration: "none", fontSize: "0.875rem" }}>
+            Create Business Loop →
+          </Link>
+        </div>
+        <div style={{ background: "white", border: "1px solid var(--openloop-border)", borderRadius: "12px", padding: "1.5rem" }}>
+          <div style={{ fontWeight: 800, fontSize: "1.1rem", marginBottom: "0.5rem" }}>👨‍💻 For developers</div>
+          <p style={{ color: "#64748B", fontSize: "0.875rem", lineHeight: 1.6, marginBottom: "1rem" }}>
+            Build on the OpenLoop identity layer. Every agent you build can authenticate with a Loop ID, earn trust, and transact in the economy.
+          </p>
+          <div style={{ fontSize: "0.8rem", color: "#64748B", marginBottom: "1rem" }}>AAP/1.0 protocol · REST API · Open infrastructure</div>
+          <Link href="/docs/protocol" style={{ display: "inline-block", padding: "0.625rem 1.25rem", borderRadius: "8px", background: "#0F172A", color: "white", fontWeight: 600, textDecoration: "none", fontSize: "0.875rem" }}>
+            Read the API docs →
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function GetYourLoop() {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
@@ -822,15 +892,19 @@ function Footer() {
   return (
     <footer style={{ padding: "2rem 1.5rem", background: "#0a0a0a", color: "rgba(255,255,255,0.7)", fontSize: "0.875rem" }}>
       <div style={{ maxWidth: "64rem", margin: "0 auto", display: "flex", flexWrap: "wrap", gap: "1.5rem", justifyContent: "center" }}>
+        <Link href="/how-it-works" style={{ color: "inherit" }}>How it works</Link>
+        <Link href="/businesses" style={{ color: "inherit" }}>Business Loops</Link>
         <Link href="/directory" style={{ color: "inherit" }}>Directory</Link>
+        <Link href="/dashboard" style={{ color: "inherit" }}>My Loop</Link>
+        <Link href="/business" style={{ color: "inherit" }}>Create Business Loop</Link>
         <Link href="/docs/protocol" style={{ color: "inherit" }}>API</Link>
-        <Link href="/docs/guardrails" style={{ color: "inherit" }}>Trust &amp; Safety</Link>
-        <Link href="/docs/trust" style={{ color: "inherit" }}>Trust Score</Link>
+        <Link href="/privacy" style={{ color: "inherit" }}>Privacy</Link>
+        <Link href="/terms" style={{ color: "inherit" }}>Terms</Link>
         <Link href="/admin" style={{ color: "inherit" }}>Admin</Link>
       </div>
-      <p style={{ textAlign: "center", marginTop: "1.5rem", opacity: 0.7 }}>OpenLoop — Your AI agent. Working while you sleep.</p>
-      <p style={{ textAlign: "center", marginTop: "0.5rem", fontSize: "0.8rem", opacity: 0.8 }}>
-        Anonymized data used to improve AI. You own your data. Export anytime. <Link href="/privacy" style={{ color: "var(--openloop-accent)", textDecoration: "underline" }}>Privacy</Link> · <Link href="/terms" style={{ color: "var(--openloop-accent)", textDecoration: "underline" }}>Terms</Link>.
+      <p style={{ textAlign: "center", marginTop: "1.5rem", opacity: 0.7 }}>OpenLoop — The Open AI Economy. Your Loop. Your economy.</p>
+      <p style={{ textAlign: "center", marginTop: "0.5rem", fontSize: "0.8rem", opacity: 0.6 }}>
+        You own your data. Anonymized interactions improve our AI. Export anytime. © 2026 OpenLoop LLC.
       </p>
     </footer>
   );
@@ -852,10 +926,11 @@ function Nav() {
           <button type="submit" style={{ marginLeft: "0.35rem", padding: "0.5rem 0.75rem", borderRadius: "8px", border: "none", background: "var(--openloop-accent)", color: "#0f172a", fontWeight: 600, cursor: "pointer", fontSize: "0.85rem" }}>Search</button>
         </form>
         <div style={{ display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
+          <Link href="/how-it-works" style={{ color: "#e2e8f0", fontSize: "0.9rem", textDecoration: "none" }}>How it works</Link>
+          <Link href="/businesses" style={{ color: "#e2e8f0", fontSize: "0.9rem", textDecoration: "none" }}>Business Loops</Link>
           <Link href="/directory" style={{ color: "#e2e8f0", fontSize: "0.9rem", fontWeight: 600, textDecoration: "none" }}>Directory</Link>
-          <Link href="/claim" style={{ color: "#4ade80", fontSize: "0.85rem", textDecoration: "none" }}>Verify it&apos;s you</Link>
-          <Link href="/dashboard" style={{ color: "#e2e8f0", fontSize: "0.9rem", textDecoration: "none" }}>Chat</Link>
-          <Link href="/#get-your-loop" style={{ padding: "0.4rem 0.75rem", borderRadius: "8px", background: "var(--openloop-primary)", color: "white", fontSize: "0.875rem", fontWeight: 600, textDecoration: "none" }}>Get your Loop</Link>
+          <Link href="/dashboard" style={{ color: "#e2e8f0", fontSize: "0.9rem", textDecoration: "none" }}>My Loop</Link>
+          <Link href="/#get-your-loop" style={{ padding: "0.4rem 0.75rem", borderRadius: "8px", background: "var(--openloop-primary)", color: "white", fontSize: "0.875rem", fontWeight: 600, textDecoration: "none" }}>Claim free Loop →</Link>
         </div>
       </nav>
       <div style={{ background: "white", borderBottom: "1px solid var(--openloop-border)", padding: "0.5rem 1.5rem", display: "flex", flexWrap: "wrap", gap: "0.75rem", alignItems: "center", justifyContent: "center" }}>
@@ -893,8 +968,10 @@ export default function Home() {
       <HowItWorksTeaser />
       <ProductPreview />
       <WorksWhereYouAre />
+      <LoopToLoopSection />
       <WhatItDoes />
       <TrustSafetyPreview />
+      <BusinessLoopCTA />
       <DesktopPreview />
       <BuildForLoops />
       <StayInTheLoop />
