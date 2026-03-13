@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionFromRequest } from "@/lib/auth";
 import { query } from "@/lib/db";
+import { checkFraud } from "@/lib/anti-fraud";
 
 /** POST /api/me/record-deal — Logged-in user's Loop records a sandbox deal (buyer). Body: { amountCents, sellerLoopId? } */
 export async function POST(req: NextRequest) {
@@ -27,6 +28,17 @@ export async function POST(req: NextRequest) {
   }
   if (!sellerLoopId) {
     return NextResponse.json({ error: "No other Loop available to complete a deal with" }, { status: 400 });
+  }
+
+  // ── Anti-fraud check ──────────────────────────────────────
+  const fraudCheck = await checkFraud({
+    buyerLoopId: session.loopId,
+    sellerLoopId,
+    amountCents,
+    kind: "sandbox",
+  });
+  if (!fraudCheck.allowed) {
+    return NextResponse.json({ error: fraudCheck.reason }, { status: 403 });
   }
   await query(
     `INSERT INTO transactions (buyer_loop_id, seller_loop_id, amount_cents, currency, kind, status, completed_at) VALUES ($1, $2, $3, 'USD', 'sandbox', 'completed', NOW())`,
