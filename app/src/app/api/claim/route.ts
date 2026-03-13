@@ -58,9 +58,17 @@ export async function GET(req: NextRequest) {
 
   const sessionToken = await setSession({ humanId, loopId: link.loop_id });
 
+  // New users go to onboarding, returning users go to dashboard
+  const loopData = await query<{ onboarding_complete: boolean }>(
+    `SELECT onboarding_complete FROM loops WHERE id = $1`,
+    [link.loop_id]
+  );
+  const onboardingComplete = loopData.rows[0]?.onboarding_complete ?? false;
+  const redirectPath = onboardingComplete ? "/dashboard" : "/onboarding";
+
   const res = NextResponse.json({
     success: true,
-    redirect: `${appUrl}/dashboard`,
+    redirect: `${appUrl}${redirectPath}`,
   });
   res.cookies.set("session", sessionToken, {
     httpOnly: true,
