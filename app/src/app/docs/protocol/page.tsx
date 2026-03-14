@@ -9,7 +9,7 @@ export default function ProtocolPage() {
       <section style={{ marginBottom: "1.5rem" }}>
         <h2 style={{ fontSize: "1.125rem", marginBottom: "0.5rem" }}>Authentication</h2>
         <p style={{ color: "#94a3b8", fontSize: "0.875rem" }}>
-          Use the session cookie (set after claim) or, for programmatic access, an API key per Loop (coming soon).
+          Use the session cookie (set after claim) or an API key for programmatic access. Generate API keys from your Loop dashboard under Settings → API Keys.
           Send <code style={{ background: "#1e293b", padding: "0.2rem 0.4rem", borderRadius: "4px" }}>Cookie: session=&lt;token&gt;</code> on requests.
         </p>
       </section>
