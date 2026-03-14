@@ -37,12 +37,28 @@ async function run() {
   }
   const pool = new Pool({ connectionString: process.env.DATABASE_URL });
   const dir = join(__dirname, "..", "migrations");
+  let applied = 0, skipped = 0;
   for (const name of MIGRATIONS) {
     const sql = readFileSync(join(dir, name), "utf8");
-    await pool.query(sql);
-    console.log("Migration", name, "completed.");
+    try {
+      await pool.query(sql);
+      console.log("Migration", name, "completed.");
+      applied++;
+    } catch (err) {
+      // Already applied (table/index exists) — skip gracefully
+      const ignorable = ["42P07","42P16","42710","42701","42P17"];
+      if (ignorable.includes(err.code)) {
+        console.log("Migration", name, "already applied — skipping.");
+        skipped++;
+      } else {
+        console.error("Migration", name, "failed:", err.message);
+        await pool.end();
+        process.exit(1);
+      }
+    }
   }
   await pool.end();
+  console.log(`\nMigrations done: ${applied} applied, ${skipped} skipped.`);
 }
 
 run().catch((err) => {
