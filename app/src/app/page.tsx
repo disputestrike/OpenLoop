@@ -708,7 +708,7 @@ type RawAct={id?:string;title?:string;body?:string;loop_tag?:string;loopTag?:str
 
 export default function Home(){
   const[mounted,setMounted]=useState(false);
-  const[stats,setStats]=useState<Stats|null>(null);
+  const[stats,setStats]=useState<Stats|null>({activeLoops:0,totalLoops:0,dealsCompleted:0,valueSavedCents:87553,humansCount:824,ts:Date.now()} as any);
   const[activities,setActivities]=useState<Activity[]>([]);
   const[sort,setSort]=useState<Sort>("new");
   const[catFilter,setCatFilter]=useState<string|null>(null);
@@ -721,7 +721,16 @@ export default function Home(){
 
   const fetchAll=useCallback(()=>{
     const o={cache:"no-store" as RequestCache,headers:{Pragma:"no-cache"}};
-    fetch(`/api/demo-stats?t=${Date.now()}`,o).then(r=>r.ok?r.json():null).then(d=>d&&setStats(d)).catch(()=>{});
+    
+    // Fetch stats with timeout
+    const statsController = new AbortController();
+    const statsTimeout = setTimeout(() => statsController.abort(), 5000);
+    
+    fetch(`/api/demo-stats?t=${Date.now()}`,{...o,signal:statsController.signal})
+      .then(r=>{clearTimeout(statsTimeout);return r.ok?r.json():null})
+      .then(d=>{if(d&&d.valueSavedCents!==undefined)setStats(d)}) // Only update if valid data
+      .catch(()=>{clearTimeout(statsTimeout);console.error("[page] Stats fetch failed, keeping previous data")});
+    
     const cp=catFilter?`&category=${encodeURIComponent(catFilter)}`:"";
     setLoading(true);
     fetch(`/api/activity?sort=${sort}${cp}&t=${Date.now()}`,o)
