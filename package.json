@@ -1,0 +1,12 @@
+{
+  "name": "openloop",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "cd app && npm install && npm run build",
+    "start": "cd app && npm run start",
+    "dev": "cd app && npm run dev"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
