@@ -55,7 +55,7 @@ export async function GET() {
 }
 
 export async function PUT(req: NextRequest) {
-  const session = await getSessionFromRequest();
+  const session = await getSessionFromCookies();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const body = await req.json().catch(() => ({}));
   const loopEmail = typeof body.loopEmail === "string" ? body.loopEmail.trim().slice(0, 256) || null : undefined;
