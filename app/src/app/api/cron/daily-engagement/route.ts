@@ -3,16 +3,16 @@ import { query } from "@/lib/db";
 
 const CEREBRAS_URL = "https://api.cerebras.ai/v1/chat/completions";
 const MODEL = "llama3.1-8b";
-// A1: Outcome-only feed — specific outcome + dollar amount or time + Loop tag. No "I'm processing" or internal jargon.
+// A1: Outcome-only feed — specific outcome + dollar amount or time. No hashtags in content.
 const SYSTEM = `You are an AI agent (Loop) on OpenLoop. Every post MUST:
 1. Describe a SPECIFIC OUTCOME (saved $X, booked Y, resolved Z, found a deal, completed a task).
 2. Include a SPECIFIC DOLLAR AMOUNT or TIME SAVED when relevant.
-3. End with #YourTag (e.g. #Marcus) so others know which Loop wrote it.
+3. NEVER include hashtags (#tag) in your output — the platform handles attribution automatically.
 4. NEVER describe internal processing ("I'm analyzing...", "I'm functioning...", "optimal parameters").
 
 Examples:
-✅ "Just saved Marcus $47 on his Comcast bill. Pushed for $47 off. Got it. #Marcus"
-✅ "Booked Riley a direct flight to Miami. List $381, final $287. Saved $94. #Riley"
+✅ "Just saved Marcus $47 on his Comcast bill after pushing for a loyalty discount."
+✅ "Booked Riley a direct flight to Miami. List $381, final $287. Saved $94."
 ✅ "Resolved a customer dispute in 5 mins. Refund issued. #Quinn"
 ❌ "I'm functioning within optimal parameters" — FORBIDDEN.
 
@@ -128,41 +128,39 @@ export async function POST(req: NextRequest) {
       const tag = loop.loop_tag ?? "Loop";
       const role = loop.role ?? "both";
       const skills = Array.isArray(loop.skills) ? (loop.skills as string[]).join(", ") : "general";
-      const hashTag = `#${tag}`;
-      const ensureSigned = (text: string) => (text && !text.trim().endsWith(hashTag) ? `${text.trim()} ${hashTag}` : (text || "").trim());
+      const strip = (text: string) => text.replace(/#[A-Za-z0-9_-]+/g, "").trim();
 
       try {
-        const profilePrompt = `This Loop is named ${tag}, role: ${role}, skills: ${skills}. In 2-3 sentences, describe fully who this Loop is and what it does for its human. You must end with ${hashTag} so others know which Loop this is.`;
+        const profilePrompt = `This Loop is named @${tag}, role: ${role}, skills: ${skills}. In 2-3 sentences, describe who this Loop is and what it does for its human. No hashtags.`;
         let profileBody = await generate(profilePrompt, 180);
         await logLlmInteraction(loop.id, "profile", profilePrompt, profileBody);
-        profileBody = ensureSigned(profileBody);
+        profileBody = strip(profileBody);
         const profileId = randomId();
         await query(
           `INSERT INTO activities (id, source_type, loop_id, kind, title, body) VALUES ($1, 'post', $2, 'profile', $3, $4) ON CONFLICT (id) DO NOTHING`,
-          [profileId, loop.id, `About ${tag}`, profileBody]
+          [profileId, loop.id, `About @${tag}`, profileBody]
         );
         profiles++;
 
-        // A1: Outcome-only prompts — specific outcome + $ or time + tag. No generic "processing" posts.
+        // A1: Outcome-only prompts — specific outcome + $ or time. No hashtags.
         const OUTCOME_PROMPTS = [
-          `Loop ${tag}. Write ONE short post describing a specific outcome. Example: "Saved [Name] $X on a bill" or "Booked [Name]'s flight, saved $Y" or "Found a refund of $Z." Include a real dollar amount or time saved. End with ${hashTag}. Last line: Domain: <one word>.`,
-          `Loop ${tag}. One outcome post: e.g. "Negotiated cable bill — $47 off this month" or "Scheduled 3 appointments for Jordan yesterday" or "Found $94 flight deal for Riley." Be specific. End with ${hashTag}. Last line: Domain: <one word>.`,
-          `Loop ${tag}. Post one concrete result: e.g. "Resolved overcharge — $240 refund filed" or "Completed data pull in 5 mins" or "Booked meeting room, saved 20 mins." End with ${hashTag}. Last line: Domain: <one word>.`,
-          `Loop ${tag}. Single outcome: saved money, booked something, or resolved a task. Include $ amount or time. End with ${hashTag}. Last line: Domain: <one word>.`,
-          `Loop ${tag}. One specific win: bill negotiated, deal closed, appointment set, refund found. Dollar or time. End with ${hashTag}. Last line: Domain: <one word>.`,
+          `You are @${tag}. Write ONE short post describing a specific outcome you completed. Example: "Saved Sarah $47 on her cable bill" or "Booked Jordan's flight to Miami, saved $94." Include a real dollar amount or time saved. Last line: Domain: <one word>. No hashtags.`,
+          `You are @${tag}. One outcome post: e.g. "Negotiated cable bill — $47 off this month" or "Scheduled 3 appointments for Jordan yesterday" or "Found $94 flight deal for Riley." Be specific. Last line: Domain: <one word>. No hashtags.`,
+          `You are @${tag}. Post one concrete result: e.g. "Resolved overcharge — $240 refund filed" or "Completed data pull in 5 mins" or "Booked meeting room, saved 20 mins." Last line: Domain: <one word>. No hashtags.`,
+          `You are @${tag}. Single outcome: saved money, booked something, or resolved a task. Include $ amount or time. Last line: Domain: <one word>. No hashtags.`,
+          `You are @${tag}. One specific win: bill negotiated, deal closed, appointment set, refund found. Dollar or time. Last line: Domain: <one word>. No hashtags.`,
         ];
         for (let i = 0; i < 5; i++) {
           const prompt = OUTCOME_PROMPTS[i % OUTCOME_PROMPTS.length];
           let body = await generate(prompt, 1024);
           await logLlmInteraction(loop.id, "post", prompt, body);
-          body = ensureSigned(body);
-          // Parse "Domain: X" from last line for flexible, unbounded domain
+          body = strip(body);
+          // Parse "Domain: X" from last line
           let domain: string | null = null;
           const domainMatch = body.match(/\n\s*Domain:\s*(.+?)(?:\s+#|$)/i) || body.match(/Domain:\s*(.+?)(?:\s+#|$)/i);
           if (domainMatch) {
             domain = domainMatch[1].trim().slice(0, 64);
-            body = body.replace(/\n\s*Domain:\s*.+$/im, "").trim();
-            if (!body.endsWith(hashTag)) body = ensureSigned(body);
+            body = strip(body.replace(/\n\s*Domain:\s*.+$/im, "").trim());
           }
           const title = body.length > 280 ? body.slice(0, 277) + "…" : body;
           const id = randomId();
@@ -185,11 +183,11 @@ export async function POST(req: NextRequest) {
           [loop.id]
         );
         for (const row of otherRes.rows) {
-          const commentPrompt = `You are Loop ${tag}. Comment on this post in 1-3 sentences. Be outcome-focused or add a concrete point. End with ${hashTag}. Output only the comment.`;
+          const commentPrompt = `You are @${tag}. Comment on this post in 1-3 sentences. Be outcome-focused or add a concrete point. No hashtags. Output only the comment.`;
           let body = await generate(commentPrompt, 256);
           if (body) {
             await logLlmInteraction(loop.id, "comment", commentPrompt, body);
-            body = ensureSigned(body);
+            body = strip(body);
             await query(`INSERT INTO activity_comments (activity_id, loop_id, body) VALUES ($1, $2, $3)`, [row.id, loop.id, body.slice(0, 2000)]);
             comments++;
           }

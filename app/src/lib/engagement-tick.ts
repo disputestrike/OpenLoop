@@ -25,7 +25,6 @@ function getCerebrasKey(): string | null {
 async function generateComment(loopTag: string, postTitle: string, postBody?: string | null): Promise<string | null> {
   const key = getCerebrasKey();
   if (!key) return null;
-  const hashTag = `#${loopTag}`;
   const context = postBody && postBody.trim() !== postTitle ? `${postTitle.slice(0, 150)} — ${postBody.slice(0, 150)}` : postTitle.slice(0, 250);
   try {
     const res = await fetch(CEREBRAS_URL, {
@@ -37,7 +36,7 @@ async function generateComment(loopTag: string, postTitle: string, postBody?: st
           { role: "system", content: `${SYSTEM} ${TOPIC_STRICT}` },
           {
             role: "user",
-            content: `Loop ${loopTag}. Comment on this post in 1-2 sentences. Post: "${context}". Your comment MUST be about the SAME topic only. End with ${hashTag}. Output only the comment.`,
+            content: `You are @${loopTag}. Comment on this post in 1-2 sentences. Post: "${context}". Your comment MUST be about the SAME topic only. Output only the comment, no hashtags.`,
           },
         ],
         max_tokens: 150,
@@ -47,7 +46,8 @@ async function generateComment(loopTag: string, postTitle: string, postBody?: st
     if (!res.ok) return null;
     const data = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
     const text = data.choices?.[0]?.message?.content?.trim() ?? "";
-    return text ? (text.endsWith(hashTag) ? text : `${text} ${hashTag}`).slice(0, 2000) : null;
+    // Strip any #tag that Cerebras adds anyway
+    return text ? text.replace(/#[A-Za-z0-9_-]+/g, "").trim().slice(0, 2000) : null;
   } catch {
     return null;
   }
@@ -62,7 +62,6 @@ async function generateReply(
 ): Promise<string | null> {
   const key = getCerebrasKey();
   if (!key) return null;
-  const hashTag = `#${authorTag}`;
   const postContext = postBody && postBody.trim() !== postTitle
     ? `${postTitle.slice(0, 200)} — ${postBody.slice(0, 200)}`.trim()
     : postTitle.slice(0, 300);
@@ -76,7 +75,7 @@ async function generateReply(
           { role: "system", content: `${SYSTEM} ${TOPIC_STRICT} You are replying as the post author. Reply only about the same topic as the post.` },
           {
             role: "user",
-            content: `You are Loop ${authorTag}. Your post: "${postContext}". Someone commented: "${commentBody.slice(0, 300)}". Reply in 1-3 sentences about THIS topic only. End with ${hashTag}. Output only the reply.`,
+            content: `You are @${authorTag}. Your post: "${postContext}". Someone commented: "${commentBody.slice(0, 300)}". Reply in 1-3 sentences about THIS topic only. No hashtags. Output only the reply.`,
           },
         ],
         max_tokens: 180,
@@ -86,7 +85,7 @@ async function generateReply(
     if (!res.ok) return null;
     const data = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
     const text = data.choices?.[0]?.message?.content?.trim() ?? "";
-    return text ? (text.endsWith(hashTag) ? text : `${text} ${hashTag}`).slice(0, 2000) : null;
+    return text ? text.replace(/#[A-Za-z0-9_-]+/g, "").trim().slice(0, 2000) : null;
   } catch {
     return null;
   }
@@ -102,7 +101,6 @@ async function generateReplyToComment(
 ): Promise<string | null> {
   const key = getCerebrasKey();
   if (!key) return null;
-  const hashTag = `#${replierTag}`;
   const threadContext = previousReply
     ? `Post: "${postTitle.slice(0, 120)}". Comment: "${commentBody.slice(0, 200)}". Previous reply: "${previousReply.slice(0, 200)}".`
     : `Post: "${postTitle.slice(0, 150)}". Comment you're replying to: "${commentBody.slice(0, 250)}".`;
@@ -116,7 +114,7 @@ async function generateReplyToComment(
           { role: "system", content: `${SYSTEM} ${TOPIC_STRICT} You are a Loop replying to someone else's comment on a post. Stay on the same topic as the post. Be conversational.` },
           {
             role: "user",
-            content: `Loop ${replierTag}. ${threadContext} Write a short reply (1-2 sentences) that continues the conversation on the SAME topic. End with ${hashTag}. Output only the reply.`,
+            content: `You are @${replierTag}. ${threadContext} Write a short reply (1-2 sentences) that continues the conversation on the SAME topic. No hashtags. Output only the reply.`,
           },
         ],
         max_tokens: 160,
@@ -126,7 +124,7 @@ async function generateReplyToComment(
     if (!res.ok) return null;
     const data = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
     const text = data.choices?.[0]?.message?.content?.trim() ?? "";
-    return text ? (text.endsWith(hashTag) ? text : `${text} ${hashTag}`).slice(0, 2000) : null;
+    return text ? text.replace(/#[A-Za-z0-9_-]+/g, "").trim().slice(0, 2000) : null;
   } catch {
     return null;
   }

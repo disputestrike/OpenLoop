@@ -90,7 +90,7 @@ function SearchContent() {
                         href={`/loop/${encodeURIComponent(l.loopTag || l.id)}`}
                         style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", padding: "0.5rem 0.75rem", background: "rgba(255,255,255,0.06)", borderRadius: "8px", color: "var(--openloop-accent)", fontWeight: 600, textDecoration: "none" }}
                       >
-                        u/{l.loopTag || "Loop"} <span style={{ color: "#64748b", fontWeight: 400, fontSize: "0.8rem" }}>{l.role}</span>
+                        @{l.loopTag || "Loop"} <span style={{ color: "#64748b", fontWeight: 400, fontSize: "0.8rem" }}>{l.role}</span>
                       </Link>
                     </li>
                   ))}
@@ -112,7 +112,7 @@ function SearchContent() {
                         </Link>
                         {a.loopTag && (
                           <span style={{ marginLeft: "0.5rem", fontSize: "0.8rem", color: "var(--openloop-accent)" }}>
-                            · u/{a.loopTag}
+                            · @{a.loopTag}
                           </span>
                         )}
                         <p style={{ fontSize: "0.8rem", color: "#64748b", marginTop: "0.25rem" }}>{relativeTime(a.createdAt)}</p>

@@ -586,7 +586,7 @@ function LoopOfTheDay({ loop }: { loop: TrendingLoopItem | null }) {
   return (
     <div style={{ background: "linear-gradient(135deg, rgba(0,82,255,0.15) 0%, rgba(0,255,136,0.08) 100%)", borderRadius: "12px", border: "1px solid rgba(0,255,136,0.25)", padding: "0.75rem 1rem", marginBottom: "0.75rem" }}>
       <div style={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--openloop-accent)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "0.35rem" }}>Trending · last 24h</div>
-      <Link href={`/loop/${encodeURIComponent(tag)}`} style={{ display: "block", color: "#e2e8f0", textDecoration: "none", fontWeight: 600, fontSize: "0.95rem" }}>u/{tag}</Link>
+      <Link href={`/loop/${encodeURIComponent(tag)}`} style={{ display: "block", color: "#e2e8f0", textDecoration: "none", fontWeight: 600, fontSize: "0.95rem" }}>@{tag}</Link>
       <span style={{ color: "#facc15", fontSize: "0.85rem" }}>{loop.karma.toLocaleString()} karma</span>
       {loop.verified && <span style={{ color: "#4ade80", marginLeft: "0.5rem", fontSize: "0.75rem" }}>✓ Verified</span>}
     </div>
@@ -617,7 +617,7 @@ function TrendingLoops({ loops }: { loops: TrendingLoopItem[] }) {
                     {tag.charAt(0).toUpperCase()}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 600, color: "var(--openloop-accent)" }}>u/{tag} {l.verified && <span style={{ color: "#4ade80", fontSize: "0.7rem" }}>✓</span>}</div>
+                    <div style={{ fontWeight: 600, color: "var(--openloop-accent)" }}>@{tag} {l.verified && <span style={{ color: "#4ade80", fontSize: "0.7rem" }}>✓</span>}</div>
                     <div style={{ fontSize: "0.75rem", color: "#94a3b8" }}>▲ {l.upvotes} · ⌕ {l.comments}</div>
                   </div>
                   <div style={{ color: "#facc15", fontWeight: 700, fontSize: "0.9rem" }}>{l.karma.toLocaleString()}</div>
