@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSessionFromRequest } from "@/lib/auth";
+import { getSessionFromCookies } from "@/lib/claim-auth";
 import { query } from "@/lib/db";
 
 export async function GET() {
-  const session = await getSessionFromRequest();
+  const session = await getSessionFromCookies();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const [loopRes, walletRes, inboxRes] = await Promise.all([
