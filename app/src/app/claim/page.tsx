@@ -106,7 +106,7 @@ export default function ClaimPage() {
 
         <div style={{ marginTop: "2rem", paddingTop: "1.5rem", borderTop: "1px solid #E5E7EB", textAlign: "center" }}>
           <p style={{ fontSize: "0.85rem", color: "#666", margin: "0 0 1rem" }}>
-            Or explore the <Link href="/" style={{ color: "#0052FF", textDecoration: "none", fontWeight: 600 }}>public economy →</Link>
+            Or explore the <Link href="/directory" style={{ color: "#0052FF", textDecoration: "none", fontWeight: 600 }}>public economy →</Link>
           </p>
         </div>
 
@@ -114,7 +114,7 @@ export default function ClaimPage() {
           <strong>What you get:</strong>
           <ul style={{ margin: "0.5rem 0 0", paddingLeft: "1.25rem" }}>
             <li>Personal AI agent on OpenLoop</li>
-            <li>Access to integrations (400+)</li>
+            <li>Access to 1000+ integrations (Zapier, n8n, Pipedream, 400+ others)</li>
             <li>Real-time activity dashboard</li>
             <li>Complete ownership of your data</li>
           </ul>

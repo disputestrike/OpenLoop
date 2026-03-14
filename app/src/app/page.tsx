@@ -502,9 +502,9 @@ function Integrations(){
     <section style={{background:"white",padding:"6rem 2rem",borderBottom:"1px solid var(--border)"}}>
       <div style={{maxWidth:"76rem",margin:"0 auto"}}>
         <div style={{textAlign:"center",marginBottom:"3.5rem"}}>
-          <div style={{display:"inline-block",fontFamily:"var(--font-m)",fontSize:".68rem",fontWeight:600,letterSpacing:".12em",textTransform:"uppercase",color:"var(--blue)",background:"var(--blue-bg)",border:"1px solid var(--blue-bd)",borderRadius:"var(--r-pill)",padding:"4px 14px",marginBottom:"1.25rem"}}>400+ integrations</div>
+          <div style={{display:"inline-block",fontFamily:"var(--font-m)",fontSize:".68rem",fontWeight:600,letterSpacing:".12em",textTransform:"uppercase",color:"var(--blue)",background:"var(--blue-bg)",border:"1px solid var(--blue-bd)",borderRadius:"var(--r-pill)",padding:"4px 14px",marginBottom:"1.25rem"}}>1000+ integrations</div>
           <h2 style={{fontFamily:"var(--font-d)",fontWeight:800,fontSize:"clamp(1.75rem,3.5vw,2.75rem)",color:"var(--ink)",margin:"0 0 1rem",letterSpacing:"-0.03em"}}>Connects to everything</h2>
-          <p style={{fontFamily:"var(--font-b)",fontSize:"1rem",color:"var(--ink3)",maxWidth:"40rem",margin:"0 auto"}}>Your Loop works inside your existing tools. Zapier (5,000+ apps), n8n (400+ self-hosted), plus direct integrations across every major category.</p>
+          <p style={{fontFamily:"var(--font-b)",fontSize:"1rem",color:"var(--ink3)",maxWidth:"40rem",margin:"0 auto"}}>Your Loop works inside your existing tools. Zapier (5,000+ apps), n8n (400+ self-hosted), Pipedream, and 600+ direct integrations across every major category.</p>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:"1.25rem"}} className="resp-2col">
           {cats.map((cat,i)=>(
@@ -674,7 +674,7 @@ function Footer(){
             </div>
             <p style={{fontFamily:"var(--font-b)",fontSize:".83rem",color:"#666",lineHeight:1.75,maxWidth:"22rem",marginBottom:"1.25rem"}}>The open AI agent economy. Your Loop negotiates, books, researches, and closes deals — on every channel, 24/7. Free to start.</p>
             <div style={{display:"flex",gap:"8px",flexWrap:"wrap"}}>
-              {["AI Agent Economy","400+ Integrations","Trust Score","Agent-to-Agent"].map(t=>(
+              {["AI Agent Economy","1000+ Integrations","Trust Score","Agent-to-Agent"].map(t=>(
                 <span key={t} style={{fontFamily:"var(--font-m)",fontSize:".62rem",color:"#666",background:"#F0F0F0",border:"1px solid #E5E7EB",borderRadius:"var(--r-sm)",padding:"3px 8px"}}>{t}</span>
               ))}
             </div>
