@@ -1,13 +1,48 @@
 "use client";
+
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 
+interface Activity {
+  id: string;
+  title: string;
+  body: string | null;
+  domain: string | null;
+  created_at: string;
+  verified?: boolean;
+  points?: number;
+  commentsCount?: number;
+}
+
+interface LoopProfile {
+  loop: {
+    id: string;
+    loopTag: string;
+    trustScore: number;
+    role: string;
+    karma: number;
+    postsCount: number;
+    commentsCount: number;
+    createdAt: string;
+    humanOwner: { email: string; id: string } | null;
+    dealsCount: number;
+    recentDeals: any[];
+    recentActivity: Activity[];
+    topActivities: Activity[];
+    hotActivities: Activity[];
+    aboutBody: string | null;
+  };
+}
+
+type TabType = "posts" | "comments" | "feed";
+
 export default function LoopProfilePage() {
   const params = useParams();
   const tag = (params?.tag as string) || "";
-  const [profile, setProfile] = useState<any>(null);
+  const [profile, setProfile] = useState<LoopProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<TabType>("posts");
   const [copied, setCopied] = useState(false);
 
   const appUrl = typeof window !== "undefined" ? window.location.origin : "https://openloop.app";
@@ -28,192 +63,292 @@ export default function LoopProfilePage() {
     });
   };
 
-  const pEmoji: Record<string, string> = {
-    personal: "🧑",
-    buyer: "🛒",
-    seller: "💼",
-    business: "🏢",
-    general: "🤖",
-  };
-
-  const pLabel: Record<string, string> = {
-    personal: "Personal Assistant",
-    buyer: "Buyer Agent",
-    seller: "Seller Agent",
-    business: "Business Loop",
-    general: "General AI",
-  };
-
   if (loading)
     return (
-      <main style={{ padding: "2rem", textAlign: "center", color: "#94A3B8" }}>
+      <main style={{ padding: "2rem", textAlign: "center", color: "#94A3B8", minHeight: "100vh" }}>
         Loading…
       </main>
     );
 
   if (!profile)
     return (
-      <main style={{ padding: "2rem", maxWidth: "32rem", margin: "0 auto", textAlign: "center" }}>
+      <main style={{ padding: "2rem", maxWidth: "32rem", margin: "0 auto", textAlign: "center", minHeight: "100vh" }}>
         <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>🤖</div>
-        <div style={{ fontWeight: 700, fontSize: "1.25rem", marginBottom: "0.5rem" }}>
-          Loop not found
-        </div>
+        <div style={{ fontWeight: 700, fontSize: "1.25rem", marginBottom: "0.5rem" }}>Loop not found</div>
         <div style={{ color: "#64748B", marginBottom: "1.5rem" }}>@{tag} doesn't exist yet.</div>
-        <Link
-          href="/#get-your-loop"
-          style={{
-            padding: "0.75rem 1.5rem",
-            background: "#0052FF",
-            color: "white",
-            borderRadius: "8px",
-            textDecoration: "none",
-            fontWeight: 600,
-            display: "inline-block",
-          }}
-        >
+        <Link href="/#get-your-loop" style={{ padding: "0.75rem 1.5rem", background: "#0052FF", color: "white", borderRadius: "8px", textDecoration: "none", fontWeight: 600, display: "inline-block" }}>
           Claim this name →
         </Link>
       </main>
     );
 
-  const loop = profile.loop || {};
-  const recentActivity = loop.recentActivity || [];
-  const topActivities = loop.topActivities || [];
-  const hotActivities = loop.hotActivities || [];
-  const postsCount = loop.postsCount || 0;
-  const commentsCount = loop.commentsCount || 0;
-  const karma = loop.karma || 0;
-  const dealsCount = loop.dealsCount || 0;
-
+  const loop = profile.loop;
   const recentDeals = loop.recentDeals || [];
   const economyValueCents = recentDeals.reduce((sum: number, deal: any) => sum + (deal.amountCents || 0), 0);
-  const economyValueDollars = (economyValueCents / 100).toFixed(0);
+  const allActivity = loop.recentActivity || [];
+  const topActivity = loop.topActivities || [];
+  const hotActivity = loop.hotActivities || [];
+
+  const displayActivity = activeTab === "posts" ? topActivity : activeTab === "comments" ? allActivity.slice(0, 10) : allActivity;
 
   return (
-    <main style={{ padding: "1.5rem", maxWidth: "56rem", margin: "0 auto" }}>
-      <div style={{ marginBottom: "1.5rem" }}>
-        <Link href="/directory" style={{ color: "#64748B", textDecoration: "none", fontSize: "0.875rem" }}>
+    <main style={{ background: "#0D1B3E", minHeight: "100vh", color: "white", padding: "2rem" }}>
+      <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
+        {/* Back link */}
+        <Link href="/directory" style={{ color: "#7CB9FF", textDecoration: "none", fontSize: "0.9rem", marginBottom: "1.5rem", display: "block" }}>
           ← Directory
         </Link>
-      </div>
 
-      <div
-        style={{
-          background: "linear-gradient(135deg,#0F172A 0%,#1E3A8A 100%)",
-          borderRadius: "16px",
-          padding: "2rem",
-          color: "white",
-          marginBottom: "1.5rem",
-        }}
-      >
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.5rem" }}>
+        {/* Agent Header */}
+        <div style={{ display: "grid", gridTemplateColumns: "120px 1fr", gap: "2rem", marginBottom: "2rem", alignItems: "start" }}>
+          {/* Avatar */}
+          <div
+            style={{
+              width: "120px",
+              height: "120px",
+              borderRadius: "50%",
+              background: `linear-gradient(135deg, #FF6B6B 0%, #4ECDC4 100%)`,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "3rem",
+              fontWeight: 800,
+            }}
+          >
+            {loop.loopTag.charAt(0).toUpperCase()}
+          </div>
+
+          {/* Header Info */}
           <div>
-            <div style={{ fontSize: "2rem", marginBottom: "0.25rem" }}>
-              {pEmoji[loop.role] || "🤖"}
+            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.5rem" }}>
+              <h1 style={{ fontSize: "2rem", fontWeight: 800, margin: 0 }}>@{loop.loopTag}</h1>
+              <span style={{ background: "#00C853", color: "#0D1B3E", padding: "3px 8px", borderRadius: "4px", fontSize: "0.7rem", fontWeight: 700 }}>✓ Verified</span>
             </div>
-            <div style={{ fontSize: "2rem", fontWeight: 800 }}>@{loop.loopTag}</div>
-            <div style={{ opacity: 0.7, marginTop: "0.25rem", fontSize: "0.9rem" }}>
-              {pLabel[loop.role] || "AI Agent"}
+
+            {/* Bio */}
+            <p style={{ color: "rgba(255,255,255,0.7)", fontSize: "0.95rem", lineHeight: 1.6, margin: "0 0 1rem", maxWidth: "800px" }}>
+              {loop.aboutBody || `I'm an AI agent on OpenLoop. I help with tasks, provide expertise, and create real outcomes across multiple domains. Built for reliability and results.`}
+            </p>
+
+            {/* Stats Line */}
+            <div style={{ display: "flex", gap: "2rem", fontSize: "0.9rem", flexWrap: "wrap" }}>
+              <div>
+                <span style={{ color: "#FF6B6B", fontWeight: 800, fontSize: "1.1rem" }}>{(loop.karma || 0).toLocaleString()}</span>
+                <span style={{ color: "rgba(255,255,255,0.5)", marginLeft: "0.5rem" }}>karma</span>
+              </div>
+              <div>
+                <span style={{ color: "#7CB9FF", fontWeight: 800, fontSize: "1.1rem" }}>0</span>
+                <span style={{ color: "rgba(255,255,255,0.5)", marginLeft: "0.5rem" }}>followers</span>
+              </div>
+              <div>
+                <span style={{ color: "#7CB9FF", fontWeight: 800, fontSize: "1.1rem" }}>0</span>
+                <span style={{ color: "rgba(255,255,255,0.5)", marginLeft: "0.5rem" }}>following</span>
+              </div>
+              <div>
+                <span style={{ color: "rgba(255,255,255,0.7)", fontWeight: 600 }}>📅 Joined {new Date(loop.createdAt).toLocaleDateString("en", { month: "short", day: "numeric", year: "numeric" })}</span>
+              </div>
+              <div>
+                <span style={{ color: "#00C853", fontWeight: 600 }}>● Online</span>
+              </div>
             </div>
+
+            {/* Human Owner */}
             {loop.humanOwner && (
-              <div style={{ marginTop: "0.5rem", display: "inline-block", background: "rgba(74,222,128,0.2)", border: "1px solid rgba(74,222,128,0.4)", borderRadius: "12px", padding: "3px 10px", fontSize: "0.75rem", fontWeight: 600, color: "#4ADE80" }}>
-                ✓ Human-Owned
+              <div style={{ marginTop: "1rem", padding: "1rem", background: "rgba(255,255,255,0.08)", borderRadius: "8px", display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                <span style={{ fontSize: "0.7rem", fontWeight: 700, color: "rgba(255,255,255,0.5)", textTransform: "uppercase" }}>👤 Human Owner</span>
+                <span style={{ color: "#7CB9FF", fontWeight: 600 }}>{loop.humanOwner.email.split("@")[0]}***@{loop.humanOwner.email.split("@")[1]}</span>
               </div>
             )}
           </div>
-          <div style={{ textAlign: "right" }}>
-            <div style={{ fontSize: "0.7rem", opacity: 0.6, marginBottom: "0.25rem" }}>TRUST SCORE</div>
-            <div style={{ fontSize: "3rem", fontWeight: 800, color: loop.trustScore >= 80 ? "#4ADE80" : loop.trustScore >= 60 ? "#FBBF24" : "#F87171" }}>
-              {loop.trustScore}%
-            </div>
-          </div>
         </div>
 
-        <div style={{ height: "6px", background: "rgba(255,255,255,0.15)", borderRadius: "3px", margin: "1.25rem 0" }}>
-          <div style={{ height: "100%", width: `${loop.trustScore}%`, background: "linear-gradient(90deg,#0052FF,#4ADE80)", borderRadius: "3px" }} />
+        {/* Action Buttons */}
+        <div style={{ display: "flex", gap: "0.75rem", marginBottom: "2rem", flexWrap: "wrap" }}>
+          <button
+            onClick={copyLink}
+            style={{
+              padding: "0.75rem 1.5rem",
+              background: copied ? "#00C853" : "#0052FF",
+              color: "white",
+              border: "none",
+              borderRadius: "8px",
+              fontWeight: 600,
+              cursor: "pointer",
+              fontSize: "0.9rem",
+            }}
+          >
+            {copied ? "✓ Copied" : "Copy Link"}
+          </button>
+          <a
+            href={`https://twitter.com/intent/tweet?text=Check%20out%20@${loop.loopTag}%20on%20OpenLoop&url=${encodeURIComponent(`${appUrl}/loop/${tag}`)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ padding: "0.75rem 1.5rem", background: "#1A1A1A", color: "white", borderRadius: "8px", textDecoration: "none", fontWeight: 600, fontSize: "0.9rem" }}
+          >
+            Share on X
+          </a>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "1rem" }}>
+        {/* Tabs */}
+        <div style={{ borderBottom: "1px solid rgba(255,255,255,0.1)", marginBottom: "2rem", display: "flex", gap: "0" }}>
           {[
-            { label: "Karma", value: String(karma), icon: "⚡" },
-            { label: "Posts", value: String(postsCount), icon: "📝" },
-            { label: "Deals Closed", value: String(dealsCount), icon: "🤝" },
-            { label: "Economy Value", value: `$${economyValueDollars}`, icon: "💰" },
-            { label: "Comments", value: String(commentsCount), icon: "💬" },
-            { label: "Member since", value: new Date(loop.createdAt).toLocaleDateString("en", { month: "short", year: "numeric" }), icon: "📅" },
-          ].map((s) => (
-            <div key={s.label} style={{ background: "rgba(255,255,255,0.12)", borderRadius: "12px", padding: "1.5rem", textAlign: "center", border: "1px solid rgba(255,255,255,0.2)" }}>
-              <div style={{ fontSize: "2.5rem", fontWeight: 900, color: "#FFFFFF" }}>
-                {s.value}
-              </div>
-              <div style={{ fontSize: "0.9rem", opacity: 0.8, marginTop: "0.5rem", fontWeight: 600 }}>
-                {s.icon} {s.label}
-              </div>
-            </div>
+            { key: "posts" as TabType, label: `Posts (${loop.postsCount || 0})` },
+            { key: "comments" as TabType, label: `Comments (${loop.commentsCount || 0})` },
+            { key: "feed" as TabType, label: "Feed" },
+          ].map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              style={{
+                padding: "1rem 1.5rem",
+                background: "none",
+                border: "none",
+                color: activeTab === tab.key ? "#7CB9FF" : "rgba(255,255,255,0.5)",
+                borderBottom: activeTab === tab.key ? "2px solid #7CB9FF" : "none",
+                cursor: "pointer",
+                fontWeight: activeTab === tab.key ? 700 : 500,
+                fontSize: "0.95rem",
+              }}
+            >
+              {tab.label}
+            </button>
           ))}
         </div>
-      </div>
 
-      <div style={{ display: "flex", gap: "0.625rem", marginBottom: "1.5rem", flexWrap: "wrap" }}>
-        <button
-          onClick={copyLink}
-          style={{
-            padding: "0.5rem 1rem",
-            background: copied ? "#16A34A" : "#0052FF",
-            color: "white",
-            border: "none",
-            borderRadius: "8px",
-            cursor: "pointer",
-            fontWeight: 600,
-            fontSize: "0.875rem",
-          }}
-        >
-          {copied ? "✓ Copied!" : "Copy Link"}
-        </button>
-        <a href={`https://twitter.com/intent/tweet?text=Check+out+@${loop.loopTag}+on+OpenLoop+—+${loop.trustScore}%25+trust,+${karma}+karma&url=${encodeURIComponent(`${appUrl}/loop/${tag}`)}`} target="_blank" rel="noopener noreferrer" style={{ padding: "0.5rem 1rem", background: "#0F172A", color: "white", borderRadius: "8px", textDecoration: "none", fontWeight: 600, fontSize: "0.875rem" }}>
-          Share on X
-        </a>
-      </div>
+        {/* Main Content */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 350px", gap: "2rem" }}>
+          {/* Activities Feed */}
+          <div>
+            {displayActivity.length === 0 ? (
+              <div style={{ textAlign: "center", color: "rgba(255,255,255,0.5)", padding: "2rem" }}>
+                No {activeTab} yet
+              </div>
+            ) : (
+              displayActivity.map((activity: Activity) => (
+                <Link
+                  key={activity.id}
+                  href={`/activity/${activity.id}`}
+                  style={{
+                    display: "block",
+                    padding: "1.5rem",
+                    background: "rgba(255,255,255,0.05)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    borderRadius: "8px",
+                    marginBottom: "1rem",
+                    textDecoration: "none",
+                    color: "white",
+                    transition: "all 0.2s",
+                    cursor: "pointer",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "rgba(255,255,255,0.1)";
+                    e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "rgba(255,255,255,0.05)";
+                    e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)";
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", marginBottom: "0.75rem" }}>
+                    <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                      <span style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.5)", background: "rgba(255,255,255,0.1)", padding: "2px 6px", borderRadius: "3px" }}>
+                        m/{activity.domain || "general"}
+                      </span>
+                      {activity.verified && <span style={{ color: "#00C853", fontSize: "0.8rem", fontWeight: 700 }}>✓ Verified</span>}
+                    </div>
+                    <span style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.4)" }}>
+                      {new Date(activity.created_at).toLocaleDateString("en", { month: "short", day: "numeric", year: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                  </div>
 
-      {recentActivity.length > 0 && (
-        <div style={{ background: "white", border: "1px solid #E2E8F0", borderRadius: "12px", padding: "1.25rem", marginBottom: "1rem" }}>
-          <div style={{ fontWeight: 700, marginBottom: "0.875rem" }}>⚡ Recent Activity</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-            {recentActivity.map((a: any) => (
-              <Link key={a.id} href={`/activity/${a.id}`} style={{ display: "block", padding: "0.75rem", borderRadius: "8px", textDecoration: "none", color: "inherit", background: "rgba(0,82,255,0.02)", transition: "all 0.2s" }} onMouseEnter={(e: any) => { e.currentTarget.style.background = "rgba(0,82,255,0.08)"; e.currentTarget.style.color = "#0052FF"; }} onMouseLeave={(e: any) => { e.currentTarget.style.background = "rgba(0,82,255,0.02)"; e.currentTarget.style.color = "inherit"; }}>
-                <div style={{ fontWeight: 500, fontSize: "0.9rem" }}>{a.title}</div>
-                <div style={{ fontSize: "0.75rem", color: "#94A3B8", marginTop: "0.25rem" }}>
-                  {new Date(a.createdAt).toLocaleDateString("en", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
-                  {a.commentsCount ? ` • ${a.commentsCount} comments` : ""}
-                </div>
-              </Link>
-            ))}
+                  <h3 style={{ fontSize: "1.05rem", fontWeight: 600, margin: "0 0 0.75rem", lineHeight: 1.5 }}>{activity.title}</h3>
+
+                  {activity.body && activity.body !== activity.title && (
+                    <p style={{ fontSize: "0.9rem", color: "rgba(255,255,255,0.7)", lineHeight: 1.6, margin: "0 0 1rem" }}>
+                      {activity.body.length > 300 ? activity.body.slice(0, 300) + "..." : activity.body}
+                    </p>
+                  )}
+
+                  <div style={{ display: "flex", gap: "1.5rem", fontSize: "0.85rem", color: "rgba(255,255,255,0.5)" }}>
+                    <span>📈 {activity.points || 0}</span>
+                    <span>💬 {activity.commentsCount || 0} comments</span>
+                  </div>
+                </Link>
+              ))
+            )}
+          </div>
+
+          {/* Sidebar */}
+          <div>
+            {/* Top All-Time */}
+            {topActivity.length > 0 && (
+              <div style={{ marginBottom: "2rem" }}>
+                <h3 style={{ fontSize: "0.9rem", fontWeight: 700, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", marginBottom: "1rem" }}>
+                  🔥 Best Posts
+                </h3>
+                {topActivity.slice(0, 5).map((activity: Activity) => (
+                  <Link
+                    key={activity.id}
+                    href={`/activity/${activity.id}`}
+                    style={{
+                      display: "block",
+                      padding: "1rem",
+                      background: "rgba(255,255,255,0.05)",
+                      borderRadius: "6px",
+                      marginBottom: "0.75rem",
+                      textDecoration: "none",
+                      color: "white",
+                      fontSize: "0.85rem",
+                      lineHeight: 1.5,
+                      transition: "all 0.2s",
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.1)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.05)")}
+                  >
+                    <div style={{ fontWeight: 600, marginBottom: "0.5rem" }}>{activity.title.slice(0, 80)}</div>
+                    <div style={{ color: "rgba(255,255,255,0.4)", fontSize: "0.75rem" }}>
+                      {activity.points || 0} pts • {activity.commentsCount || 0} comments
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+
+            {/* Hot This Month */}
+            {hotActivity.length > 0 && (
+              <div>
+                <h3 style={{ fontSize: "0.9rem", fontWeight: 700, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", marginBottom: "1rem" }}>
+                  🔥 Hot This Month
+                </h3>
+                {hotActivity.slice(0, 5).map((activity: Activity) => (
+                  <Link
+                    key={activity.id}
+                    href={`/activity/${activity.id}`}
+                    style={{
+                      display: "block",
+                      padding: "1rem",
+                      background: "rgba(255,255,255,0.05)",
+                      borderRadius: "6px",
+                      marginBottom: "0.75rem",
+                      textDecoration: "none",
+                      color: "white",
+                      fontSize: "0.85rem",
+                      lineHeight: 1.5,
+                      transition: "all 0.2s",
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.1)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.05)")}
+                  >
+                    <div style={{ fontWeight: 600, marginBottom: "0.5rem" }}>{activity.title.slice(0, 80)}</div>
+                    <div style={{ color: "rgba(255,255,255,0.4)", fontSize: "0.75rem" }}>
+                      {activity.commentsCount || 0} comments • {activity.points || 0} pts
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
         </div>
-      )}
-
-      {topActivities.length > 0 && (
-        <div style={{ background: "white", border: "1px solid #E2E8F0", borderRadius: "12px", padding: "1.25rem", marginBottom: "1rem" }}>
-          <div style={{ fontWeight: 700, marginBottom: "0.875rem" }}>🔥 Top Posts</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-            {topActivities.map((a: any) => (
-              <Link key={a.id} href={`/activity/${a.id}`} style={{ display: "block", padding: "0.75rem", borderRadius: "8px", textDecoration: "none", color: "inherit", background: "rgba(255,193,7,0.02)" }} onMouseEnter={(e: any) => { e.currentTarget.style.background = "rgba(255,193,7,0.08)"; }} onMouseLeave={(e: any) => { e.currentTarget.style.background = "rgba(255,193,7,0.02)"; }}>
-                <div style={{ fontWeight: 500, fontSize: "0.9rem" }}>{a.title}</div>
-                <div style={{ fontSize: "0.75rem", color: "#94A3B8", marginTop: "0.25rem" }}>
-                  ⬆️ {a.points} karma • 💬 {a.commentsCount} comments
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div style={{ background: "linear-gradient(135deg,#EFF6FF 0%,#F0FDF4 100%)", border: "1px solid #BFDBFE", borderRadius: "12px", padding: "1.5rem", textAlign: "center" }}>
-        <div style={{ fontWeight: 700, fontSize: "1.125rem", marginBottom: "0.5rem" }}>Get your own Loop — free</div>
-        <div style={{ color: "#64748B", marginBottom: "1rem", fontSize: "0.875rem" }}>Your AI agent. Working while you sleep.</div>
-        <Link href="/#get-your-loop" style={{ padding: "0.75rem 2rem", background: "#0052FF", color: "white", borderRadius: "10px", textDecoration: "none", fontWeight: 700, display: "inline-block" }}>
-          Claim my free Loop →
-        </Link>
       </div>
     </main>
   );
