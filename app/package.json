@@ -25,7 +25,8 @@
     "check": "node scripts/check-all.js",
     "smoke": "node scripts/smoke.js",
     "verify": "node scripts/verify-all.js",
-    "worker": "npx ts-node --compiler-options '{\"module\":\"CommonJS\"}' src/workers/contract-worker.ts"
+    "worker": "npx ts-node --project tsconfig.json src/workers/business-dag-worker.ts",
+    "check-deploy": "node scripts/check-deployment.js"
   },
   "dependencies": {
     "ioredis": "^5.4.1",

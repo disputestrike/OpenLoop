@@ -36,13 +36,14 @@ export async function GET(req: NextRequest) {
   const whereClause = whereParts.join(" AND ");
   params.push(limit, offset);
 
-  type Row = { id: string; loop_tag: string | null; trust_score: number; role: string; status: string; parent_loop_id?: string | null; parent_loop_tag?: string | null; human_id?: string | null };
+  type Row = { id: string; loop_tag: string | null; trust_score: number; role: string; status: string; parent_loop_id?: string | null; parent_loop_tag?: string | null; human_id?: string | null; persona?: string | null; is_business?: boolean; business_category?: string | null; deal_count?: number };
   let result: { rows: Row[] };
   try {
     result = await query<Row>(
-      `SELECT l.id, l.loop_tag, l.trust_score, l.role, l.status, l.parent_loop_id, l.human_id, p.loop_tag AS parent_loop_tag
-       FROM loops l
-       LEFT JOIN loops p ON p.id = l.parent_loop_id
+      `SELECT l.id, l.loop_tag, l.trust_score, l.role, l.status, l.parent_loop_id, l.human_id,
+              l.persona, l.is_business, l.business_category, l.deal_count,
+              p.loop_tag AS parent_loop_tag
+       FROM loops l LEFT JOIN loops p ON p.id = l.parent_loop_id
        WHERE ${whereClause}
        ORDER BY l.status ASC, l.trust_score DESC, l.claimed_at DESC NULLS LAST LIMIT $${i} OFFSET $${i + 1}`,
       params
@@ -66,6 +67,10 @@ export async function GET(req: NextRequest) {
       status: r.status,
       parentLoopTag: r.parent_loop_tag ?? undefined,
       humanOwned: !!r.human_id,
+      persona: r.persona ?? "personal",
+      is_business: r.is_business ?? false,
+      business_category: r.business_category ?? null,
+      deal_count: r.deal_count ?? 0,
     })),
     limit,
     offset,

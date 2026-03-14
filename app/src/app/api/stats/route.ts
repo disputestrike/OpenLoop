@@ -30,7 +30,7 @@ export async function GET() {
 
   try {
     const humansPromise = pool.query(`SELECT COUNT(*)::text AS n FROM humans`).catch(() => ({ rows: [{ n: "0" }] }));
-    const [loopsRes, totalLoopsRes, verifiedRes, txRes, valueRes, last7Res, prev7Res, humansRes] = await Promise.all([
+    const [loopsRes, totalLoopsRes, verifiedRes, txRes, valueRes, last7Res, prev7Res, humansRes, walletSavingsRes] = await Promise.all([
       pool.query(`SELECT COUNT(*)::text AS n FROM loops WHERE status = 'active'`),
       pool.query(`SELECT COUNT(*)::text AS n FROM loops WHERE loop_tag IS NOT NULL`),
       pool.query(`SELECT COUNT(*)::text AS n FROM loops WHERE status IN ('active', 'unclaimed') AND loop_tag IS NOT NULL AND trust_score >= 70`),
@@ -38,6 +38,7 @@ export async function GET() {
       pool.query(`SELECT COALESCE(SUM(amount_cents), 0)::text AS sum FROM transactions WHERE status = 'completed'`),
       pool.query(`SELECT COALESCE(SUM(amount_cents), 0)::text AS sum FROM transactions WHERE status = 'completed' AND created_at >= NOW() - INTERVAL '7 days'`),
       pool.query(`SELECT COALESCE(SUM(amount_cents), 0)::text AS sum FROM transactions WHERE status = 'completed' AND created_at >= NOW() - INTERVAL '14 days' AND created_at < NOW() - INTERVAL '7 days'`),
+      pool.query(`SELECT COALESCE(SUM(amount_cents), 0)::text AS sum FROM loop_wallet_events WHERE event_type IN ('savings', 'deal')`).catch(() => ({ rows: [{ sum: "0" }] })),
       humansPromise,
     ]);
     const activeLoops = parseInt(loopsRes.rows[0]?.n || "0", 10);
@@ -48,6 +49,9 @@ export async function GET() {
     const last7Cents = parseInt(last7Res.rows[0]?.sum || "0", 10);
     const prev7Cents = parseInt(prev7Res.rows[0]?.sum || "0", 10);
     const humansCount = parseInt(humansRes.rows[0]?.n || "0", 10);
+    const walletSavedCents = parseInt((walletSavingsRes as { rows: Array<{ sum: string }> }).rows[0]?.sum || "0", 10);
+    // Use whichever is larger — transactions or wallet savings
+    const totalEconomyCents = Math.max(valueSavedCents, walletSavedCents);
     let valueSavedDeltaPercent: number;
     if (prev7Cents > 0) {
       valueSavedDeltaPercent = Math.round(((last7Cents - prev7Cents) / prev7Cents) * 1000) / 10;
@@ -100,7 +104,8 @@ export async function GET() {
         totalLoops,
         verifiedLoops,
         dealsCompleted,
-        valueSavedCents,
+        valueSavedCents: totalEconomyCents,
+        walletSavedCents,
         valueSavedDeltaPercent,
         humansCount,
         billsCount,
