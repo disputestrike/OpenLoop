@@ -15,6 +15,7 @@ function fmt(c:number){if(c>=100000000)return`$${(c/100000000).toFixed(1)}M`;if(
 /* ── NAV ─────────────────────────────────────────────── */
 function Nav(){
   const[sc,setSc]=useState(false);
+  const[mobileOpen,setMobileOpen]=useState(false);
   useEffect(()=>{const h=()=>setSc(window.scrollY>50);window.addEventListener("scroll",h,{passive:true});return()=>window.removeEventListener("scroll",h)},[]);
   return(
     <nav style={{position:"sticky",top:0,zIndex:300,background:sc?"rgba(255,255,255,0.95)":"white",backdropFilter:sc?"blur(20px)":"none",borderBottom:`1px solid ${sc?"var(--border)":"transparent"}`,transition:"all .2s ease",padding:"0 2rem"}}>
@@ -25,14 +26,32 @@ function Nav(){
           </div>
           <span style={{fontFamily:"var(--font-d)",fontWeight:700,fontSize:"1.1rem",color:"var(--ink)",letterSpacing:"-0.02em"}}>OpenLoop</span>
         </Link>
-        <div style={{display:"flex",alignItems:"center",gap:"2rem"}}>
+        {/* Desktop Nav */}
+        <div style={{display:"flex",alignItems:"center",gap:"2rem"}} className="resp-hide">
           {[["How it works","/how-it-works"],["Business","/businesses"],["Integrations","/integrations"],["Directory","/directory"]].map(([l,h])=>(
             <Link key={l} href={h} style={{fontFamily:"var(--font-b)",fontSize:".875rem",fontWeight:500,color:"var(--ink3)",textDecoration:"none",transition:"color .15s"}}>{l}</Link>
           ))}
           <Link href="/dashboard" style={{fontFamily:"var(--font-b)",fontSize:".875rem",fontWeight:500,color:"var(--ink3)",textDecoration:"none"}}>My Loop</Link>
           <Link href="/claim" style={{fontFamily:"var(--font-b)",fontWeight:600,fontSize:".875rem",padding:".5rem 1.25rem",borderRadius:"var(--r-pill)",background:"var(--blue)",color:"white",textDecoration:"none",transition:"all .15s",boxShadow:"0 2px 8px rgba(0,82,255,0.3)"}}>Get your Loop →</Link>
         </div>
+        {/* Mobile Hamburger */}
+        <button onClick={()=>setMobileOpen(!mobileOpen)} style={{display:"none",background:"none",border:"none",cursor:"pointer",padding:"8px",marginRight:"-8px"}} className="resp-show">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <line x1="3" y1="6" x2="21" y2="6"/>
+            <line x1="3" y1="12" x2="21" y2="12"/>
+            <line x1="3" y1="18" x2="21" y2="18"/>
+          </svg>
+        </button>
       </div>
+      {/* Mobile Menu */}
+      {mobileOpen&&(
+        <div style={{display:"flex",flexDirection:"column",gap:"1rem",padding:"1rem 0",borderTop:"1px solid var(--border)"}}>
+          {[["How it works","/how-it-works"],["Business","/businesses"],["Integrations","/integrations"],["Directory","/directory"],["My Loop","/dashboard"]].map(([l,h])=>(
+            <Link key={l} href={h} onClick={()=>setMobileOpen(false)} style={{fontFamily:"var(--font-b)",fontSize:".875rem",fontWeight:500,color:"var(--ink3)",textDecoration:"none"}}>{l}</Link>
+          ))}
+          <Link href="/claim" onClick={()=>setMobileOpen(false)} style={{fontFamily:"var(--font-b)",fontWeight:600,fontSize:".875rem",padding:".5rem 1.25rem",borderRadius:"var(--r-pill)",background:"var(--blue)",color:"white",textDecoration:"none",display:"inline-block"}}>Get your Loop →</Link>
+        </div>
+      )}
     </nav>
   );
 }
