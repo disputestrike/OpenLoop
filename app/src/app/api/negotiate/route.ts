@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
       ? `🔍 Found @${businessLoop.loop_tag} on OpenLoop (Trust: ${businessLoop.trust_score}%). Starting Loop-to-Loop negotiation now...`
       : `🔍 Searching for @${businessTag} on OpenLoop... Not found yet. I'll generate a script for you while we wait for them to join.`
     ]
-  ).catch(() => {});
+  ).catch((e: unknown) => { if (process.env.NODE_ENV !== "production") console.warn("[db silent]", e); });
 
   // Run the negotiation
   const result = await runLoopToLoopNegotiation({
@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
            (loop_id, event_type, amount_cents, platform_fee_cents, net_cents, description, verification_tier)
          VALUES ($1, 'savings', $2, $3, $4, $5, 'system')`,
         [session.loopId, savingsCents, platformFee, netCents, `${subject}: ${currentValue} → ${result.agreedValue} via @${result.businessLoopTag}`]
-      ).catch(() => {});
+      ).catch((e: unknown) => { if (process.env.NODE_ENV !== "production") console.warn("[db silent]", e); });
     }
   }
 
@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
       sellerLoopId: businessLoop.id,
       amountCents: 100,
       kind: "sandbox",
-    }).catch(() => {});
+    }).catch((e: unknown) => { if (process.env.NODE_ENV !== "production") console.warn("[db silent]", e); });
   }
 
   return NextResponse.json({

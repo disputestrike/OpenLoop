@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
     const webhook = await query<{ webhook_url: string | null }>(`SELECT webhook_url FROM loops WHERE id = $1`, [session.loopId]);
     const wurl = webhook.rows[0]?.webhook_url;
     if (wurl && wurl.startsWith("http")) {
-      fetch(wurl, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ event: "post_created", id, title }) }).catch(() => {});
+      fetch(wurl, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ event: "post_created", id, title }) }).catch((e: unknown) => { if (process.env.NODE_ENV !== "production") console.warn("[db silent]", e); });
     }
   } catch {
     // webhook_url column may not exist yet

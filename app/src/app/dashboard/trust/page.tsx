@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import BackNav from "@/components/BackNav";
 import { useRouter } from "next/navigation";
 
 type Me = {
@@ -117,5 +118,6 @@ export default function TrustPage() {
         </div>
       </div>
     </main>
+  
   );
 }

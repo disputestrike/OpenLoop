@@ -1,50 +1,64 @@
 /**
- * Simple in-memory rate limit. For multi-instance deploy use Redis.
- * Use for: claim, signup (POST /api/loops), chat (optional).
+ * Rate limiter with Redis backing for multi-instance Railway deploys.
+ * Falls back to in-memory if Redis is unavailable.
  */
-const store = new Map<string, { count: number; resetAt: number }>();
-const WINDOW_MS = 60 * 1000; // 1 min
-const MAX_CLAIM = 10;
-const MAX_LOOPS_POST = 20;
-const MAX_CHAT = 120;
+import { getRedis } from "@/lib/redis";
 
-function getKey(ip: string, prefix: string): string {
-  return `${prefix}:${ip}`;
-}
+const WINDOW_MS = 60_000; // 1 minute
+const LIMITS = {
+  claim:     10,
+  loops_post: 20,
+  chat:      120,
+  api:       300,
+};
 
-function isLimited(key: string, max: number): boolean {
+// In-memory fallback
+const memStore = new Map<string, { count: number; resetAt: number }>();
+
+function memCheck(key: string, max: number): boolean {
   const now = Date.now();
-  let entry = store.get(key);
-  if (!entry) {
-    entry = { count: 1, resetAt: now + WINDOW_MS };
-    store.set(key, entry);
-    return false;
-  }
-  if (now > entry.resetAt) {
-    entry = { count: 1, resetAt: now + WINDOW_MS };
-    store.set(key, entry);
+  let entry = memStore.get(key);
+  if (!entry || now > entry.resetAt) {
+    memStore.set(key, { count: 1, resetAt: now + WINDOW_MS });
     return false;
   }
   entry.count++;
   return entry.count > max;
 }
 
+async function redisCheck(key: string, max: number): Promise<boolean> {
+  try {
+    const client = await getRedis();
+    if (!client) return memCheck(key, max);
+    const current = await client.incr(key);
+    if (current === 1) {
+      await client.expire(key, Math.floor(WINDOW_MS / 1000));
+    }
+    return current > max;
+  } catch {
+    return memCheck(key, max);
+  }
+}
+
 export function getClientIp(req: Request): string {
   const xff = req.headers.get("x-forwarded-for");
-  if (xff) return xff.split(",")[0].trim();
+  if (xff) return xff.split(",")[0]!.trim();
   const xri = req.headers.get("x-real-ip");
   if (xri) return xri;
   return "unknown";
 }
 
-export function checkRateLimitClaim(req: Request): boolean {
-  return isLimited(getKey(getClientIp(req), "claim"), MAX_CLAIM);
+export async function checkRateLimitClaim(req: Request): Promise<boolean> {
+  const ip = getClientIp(req);
+  return redisCheck(`rl:claim:${ip}`, LIMITS.claim);
 }
 
-export function checkRateLimitLoopsPost(req: Request): boolean {
-  return isLimited(getKey(getClientIp(req), "loops"), MAX_LOOPS_POST);
+export async function checkRateLimitLoopsPost(req: Request): Promise<boolean> {
+  const ip = getClientIp(req);
+  return redisCheck(`rl:loops:${ip}`, LIMITS.loops_post);
 }
 
-export function checkRateLimitChat(req: Request): boolean {
-  return isLimited(getKey(getClientIp(req), "chat"), MAX_CHAT);
+export async function checkRateLimitChat(req: Request): Promise<boolean> {
+  const ip = getClientIp(req);
+  return redisCheck(`rl:chat:${ip}`, LIMITS.chat);
 }

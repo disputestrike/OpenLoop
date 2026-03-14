@@ -66,7 +66,7 @@ function parseIntent(message: string): {
 }
 
 export async function POST(req: NextRequest) {
-  if (checkRateLimitChat(req)) {
+  if (await checkRateLimitChat(req)) {
     return NextResponse.json({ error: "Too many messages. Please slow down." }, { status: 429 });
   }
   const session = await getSessionFromRequest();
@@ -193,7 +193,7 @@ export async function POST(req: NextRequest) {
   const logRes = await query<{id:string}>("INSERT INTO llm_interactions (loop_id, kind, prompt, response, source) VALUES ($1, 'chat', $2, $3, 'openloop_app') RETURNING id", [loopId, userMessage, assistantContent.slice(0,8000)]).catch(()=>({rows:[]}));
   const interactionId = logRes.rows[0]?.id ?? null;
   await query("INSERT INTO chat_messages (loop_id, role, content, llm_interaction_id) VALUES ($1, 'assistant', $2, $3)", [loopId, assistantContent, interactionId]);
-  extractAndSaveMemory(loopId, userMessage, assistantContent).catch(()=>{});
+  extractAndSaveMemory(loopId, userMessage, assistantContent).catch((e: unknown) => { if (process.env.NODE_ENV !== "production") console.warn("[db silent]", e); });
   return NextResponse.json({ reply: assistantContent, interactionId: interactionId??undefined });
 }
 
@@ -201,10 +201,10 @@ async function extractAndSaveMemory(loopId:string, userMsg:string, assistantMsg:
   const combined = `${userMsg} ${assistantMsg}`.toLowerCase();
   const prefMatches = Array.from(combined.matchAll(/i (prefer|like|hate|want|need) (.{3,50})/gi));
   for (const m of prefMatches) {
-    await query("INSERT INTO loop_memory (loop_id, memory_type, content, source) VALUES ($1, 'preference', $2, 'chat')", [loopId, m[0].slice(0,200)]).catch(()=>{});
+    await query("INSERT INTO loop_memory (loop_id, memory_type, content, source) VALUES ($1, 'preference', $2, 'chat')", [loopId, m[0].slice(0,200)]).catch((e: unknown) => { if (process.env.NODE_ENV !== "production") console.warn("[db silent]", e); });
   }
   const factMatches = Array.from(combined.matchAll(/my (\w+) (bill|payment|plan) is \$?[\d.]+/gi));
   for (const m of factMatches) {
-    await query("INSERT INTO loop_memory (loop_id, memory_type, content, source) VALUES ($1, 'fact', $2, 'chat')", [loopId, m[0].slice(0,200)]).catch(()=>{});
+    await query("INSERT INTO loop_memory (loop_id, memory_type, content, source) VALUES ($1, 'fact', $2, 'chat')", [loopId, m[0].slice(0,200)]).catch((e: unknown) => { if (process.env.NODE_ENV !== "production") console.warn("[db silent]", e); });
   }
 }

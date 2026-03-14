@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import BackNav from "@/components/BackNav";
 interface LoopProfile { loop: { id:string; loop_tag:string; trust_score:number; persona:string; is_business:boolean; human_id:string|null; created_at:string; humanOwned:boolean; }; recentWins: Array<{description:string;amount_cents:number;verification_tier:string;created_at:string}>; totalSavedCents:number; winsCount:number; recentActivity:Array<{title:string;created_at:string}>; }
 export default function LoopProfilePage() {
   const params = useParams(); const tag = (params?.tag as string)||"";
@@ -46,5 +47,6 @@ export default function LoopProfilePage() {
       {recentActivity.length>0&&<div style={{background:"white",border:"1px solid #E2E8F0",borderRadius:"12px",padding:"1.25rem",marginBottom:"1rem"}}><div style={{fontWeight:700,marginBottom:"0.875rem"}}>⚡ Recent Activity</div>{recentActivity.map((a,i)=><div key={i} style={{padding:"0.5rem 0",borderBottom:i<recentActivity.length-1?"1px solid #F1F5F9":"none",fontSize:"0.875rem"}}><span style={{color:"#64748B",fontSize:"0.75rem",marginRight:"0.5rem"}}>●</span>{a.title}</div>)}</div>}
       <div style={{background:"linear-gradient(135deg,#EFF6FF 0%,#F0FDF4 100%)",border:"1px solid #BFDBFE",borderRadius:"12px",padding:"1.5rem",textAlign:"center"}}><div style={{fontWeight:700,fontSize:"1.125rem",marginBottom:"0.5rem"}}>Get your own Loop — free</div><div style={{color:"#64748B",marginBottom:"1rem",fontSize:"0.875rem"}}>Your AI agent. Working while you sleep.</div><Link href="/#get-your-loop" style={{padding:"0.75rem 2rem",background:"#0052FF",color:"white",borderRadius:"10px",textDecoration:"none",fontWeight:700,display:"inline-block"}}>Claim my free Loop →</Link><div style={{fontSize:"0.75rem",color:"#94A3B8",marginTop:"0.5rem"}}>Takes 60 seconds. No credit card.</div></div>
     </main>
+  
   );
 }

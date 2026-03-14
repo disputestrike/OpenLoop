@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     `INSERT INTO business_join_waitlist (business_name, requested_by_loop_id, subject)
      VALUES (lower($1), $2, $3)`,
     [businessName.trim(), session.loopId, subject || null]
-  ).catch(() => {});
+  ).catch((e: unknown) => { if (process.env.NODE_ENV !== "production") console.warn("[db silent]", e); });
 
   return NextResponse.json({
     ok: true,

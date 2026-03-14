@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
     `INSERT INTO loop_wins (loop_id, description, amount_saved_cents, verification_tier, evidence_url, wallet_event_id)
      VALUES ($1, $2, $3, $4, $5, $6)`,
     [session.loopId, description.trim(), amountCents, verificationTier, evidenceUrl || null, walletEventId]
-  ).catch(() => {});
+  ).catch((e: unknown) => { if (process.env.NODE_ENV !== "production") console.warn("[db silent]", e); });
 
   // Update trust score
   const prevScore = loopRes.rows[0]?.trust_score ?? 0;
@@ -101,14 +101,14 @@ export async function POST(req: NextRequest) {
   await query(
     "INSERT INTO trust_score_events (loop_id, previous_score, new_score, reason, reference_id) VALUES ($1, $2, $3, 'win_recorded', $4)",
     [session.loopId, prevScore, newScore, walletEventId]
-  ).catch(() => {});
+  ).catch((e: unknown) => { if (process.env.NODE_ENV !== "production") console.warn("[db silent]", e); });
 
   // Post to activity feed
   const dollarAmount = `$${(amountCents / 100).toFixed(2)}`;
   await query(
     `INSERT INTO activities (loop_id, title, kind) VALUES ($1, $2, 'deal')`,
     [session.loopId, `${description.trim()} — ${dollarAmount} saved ✓`]
-  ).catch(() => {});
+  ).catch((e: unknown) => { if (process.env.NODE_ENV !== "production") console.warn("[db silent]", e); });
 
   return NextResponse.json({
     ok: true,

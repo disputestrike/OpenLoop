@@ -65,7 +65,7 @@ export async function PUT(req: NextRequest) {
     const loopRes = await query<{ loop_tag: string }>("SELECT loop_tag FROM loops WHERE id = $1", [session.loopId]);
     await query("INSERT INTO chat_messages (loop_id, role, content) VALUES ($1, 'assistant', $2)",
       [session.loopId, `❌ Order cancelled: ${order.description}. Understood — I won't proceed.`]
-    ).catch(() => {});
+    ).catch((e: unknown) => { if (process.env.NODE_ENV !== "production") console.warn("[db silent]", e); });
     return NextResponse.json({ ok: true, status: "cancelled" });
   }
 
@@ -83,7 +83,7 @@ export async function PUT(req: NextRequest) {
   // Notify Loop
   await query("INSERT INTO chat_messages (loop_id, role, content) VALUES ($1, 'assistant', $2)",
     [session.loopId, `✅ Approved! Executing: ${order.description}…`]
-  ).catch(() => {});
+  ).catch((e: unknown) => { if (process.env.NODE_ENV !== "production") console.warn("[db silent]", e); });
 
   // Execute browser action
   const url = order.target_url || `https://www.${order.target_business.toLowerCase().replace(/\s+/g, "")}.com`;
@@ -110,7 +110,7 @@ export async function PUT(req: NextRequest) {
     targetBusiness: order.target_business,
     description: order.description,
     amountCents: order.amount_cents,
-  }).catch(() => {});
+  }).catch((e: unknown) => { if (process.env.NODE_ENV !== "production") console.warn("[db silent]", e); });
 
   return NextResponse.json({ ok: true, status: result.success ? "completed" : "failed", result });
 }

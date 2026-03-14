@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
              VALUES ($1, 'win', $2, $3), ($1, 'deal', $2, $3), ($1, 'alert', $2, $3)
              ON CONFLICT DO NOTHING`,
             [loopId, channel, enabled]
-          ).catch(() => {});
+          ).catch((e: unknown) => { if (process.env.NODE_ENV !== "production") console.warn("[db silent]", e); });
         }
         break;
       }
@@ -112,7 +112,7 @@ export async function POST(req: NextRequest) {
       await query(
         "INSERT INTO trust_score_events (loop_id, previous_score, new_score, reason) VALUES ($1, $2, $3, 'onboarding_step')",
         [loopId, prev, newScore]
-      ).catch(() => {});
+      ).catch((e: unknown) => { if (process.env.NODE_ENV !== "production") console.warn("[db silent]", e); });
     }
 
     return NextResponse.json({ ok: true, step, trustBonusAwarded: bonus });

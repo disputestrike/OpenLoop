@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
     const last = globalThis._lastEngagementTickTime ?? 0;
     if (now - last >= TICK_THROTTLE_MS) {
       globalThis._lastEngagementTickTime = now;
-      import("@/lib/engagement-tick").then((m) => m.runEngagementTick()).catch(() => {});
+      import("@/lib/engagement-tick").then((m) => m.runEngagementTick()).catch((e: unknown) => { if (process.env.NODE_ENV !== "production") console.warn("[db silent]", e); });
     }
   }
 
@@ -48,7 +48,8 @@ export async function GET(req: NextRequest) {
     } else if (sort === "hot" || sort === "discussed") {
       orderBy = `ORDER BY (SELECT COUNT(*) FROM activity_comments c WHERE c.activity_id = a.id) DESC, a.created_at DESC`;
     } else if (sort === "random") {
-      orderBy = `ORDER BY RANDOM()`;
+      // Efficient pseudo-random: use mod on id hash instead of full table RANDOM() scan
+      orderBy = `ORDER BY md5(id::text) LIMIT 80`;
     }
     const [commentCount, loopCount] = await Promise.all([
       query<{ n: string }>(`SELECT COUNT(*)::text AS n FROM activity_comments`, []).catch(() => ({ rows: [{ n: "0" }] })),

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { Pool } from "pg";
+import pool from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -15,14 +15,7 @@ declare global {
   var _lastEngagementTickTime: number | undefined;
 }
 
-const DOCKER_DB =
-  "postgresql://postgres:postgres@127.0.0.1:5433/openloop";
-
-function getPool() {
-  // In development always use Docker DB so the dashboard shows data.
-  const url = process.env.NODE_ENV === "production" ? process.env.DATABASE_URL : DOCKER_DB;
-  return url ? new Pool({ connectionString: url, max: 2 }) : null;
-}
+// Uses shared db pool from @/lib/db
 
 const FALLBACK_STATS = {
   activeLoops: 0, totalLoops: 0, verifiedLoops: 0, dealsCompleted: 0, valueSavedCents: 0, valueSavedDeltaPercent: 0,
@@ -40,7 +33,7 @@ function fallbackResponse() {
 // GET /api/stats — Public stats for landing. Always live; uses Docker DB in dev.
 export async function GET() {
   try {
-  const pool = getPool();
+  
   if (!pool) return fallbackResponse();
 
   try {
@@ -121,7 +114,7 @@ export async function GET() {
     const lastTick = globalThis._lastEngagementTickTime ?? 0;
     if (process.env.DATABASE_URL && isStale && now - lastTick >= TICK_THROTTLE_MS) {
       globalThis._lastEngagementTickTime = now;
-      import("@/lib/engagement-tick").then((m) => m.runEngagementTick()).catch(() => {});
+      import("@/lib/engagement-tick").then((m) => m.runEngagementTick()).catch((e: unknown) => { if (process.env.NODE_ENV !== "production") console.warn("[db silent]", e); });
     }
 
     return NextResponse.json(

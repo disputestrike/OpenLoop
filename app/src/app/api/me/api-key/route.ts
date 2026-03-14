@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
   const rawKey = `lk_live_${crypto.randomBytes(24).toString("hex")}`;
   const prefix = rawKey.slice(0, 12);
   const hashed = crypto.createHash("sha256").update(rawKey).digest("hex");
-  await query(`CREATE TABLE IF NOT EXISTS loop_api_keys (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), loop_id UUID REFERENCES loops(id) ON DELETE CASCADE, name TEXT NOT NULL, prefix TEXT NOT NULL, key_hash TEXT NOT NULL UNIQUE, revoked BOOLEAN DEFAULT false, last_used_at TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT now())`).catch(() => {});
+  await query(`CREATE TABLE IF NOT EXISTS loop_api_keys (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), loop_id UUID REFERENCES loops(id) ON DELETE CASCADE, name TEXT NOT NULL, prefix TEXT NOT NULL, key_hash TEXT NOT NULL UNIQUE, revoked BOOLEAN DEFAULT false, last_used_at TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT now())`).catch((e: unknown) => { if (process.env.NODE_ENV !== "production") console.warn("[db silent]", e); });
   const res = await query<{ id:string }>(`INSERT INTO loop_api_keys (loop_id, name, prefix, key_hash) VALUES ($1, $2, $3, $4) RETURNING id`, [session.loopId, name.trim(), prefix, hashed]);
   return NextResponse.json({ id: res.rows[0]?.id, key: rawKey, prefix, message: "Save this key — it won't be shown again." });
 }

@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import BackNav from "@/components/BackNav";
 
 type LoopItem = {
   id: string; loopTag: string | null; trustScore: number; role: string;

@@ -28,6 +28,7 @@ const MIGRATIONS = [
   "018_audit_log.sql",
   "019_loop_integrations.sql",
   "020_loop_agent_orders_extra_columns.sql",
+  "021_performance_indexes.sql",
 ];
 
 async function run() {

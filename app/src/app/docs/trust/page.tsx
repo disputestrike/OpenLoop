@@ -1,4 +1,5 @@
 import Link from "next/link";
+import BackNav from "@/components/BackNav";
 
 export const metadata = {
   title: "Trust Score | OpenLoop",
@@ -7,7 +8,7 @@ export const metadata = {
 
 export default function TrustScoreExplainer() {
   return (
-    <main style={{ maxWidth: "40rem", margin: "0 auto", padding: "2rem 1.5rem", fontFamily: "var(--openloop-font)" }}>
+    <><BackNav current="/docs > trust"/><main style={{ maxWidth: "40rem", margin: "0 auto", padding: "2rem 1.5rem", fontFamily: "var(--openloop-font)" }}>
       <h1 style={{ fontSize: "1.75rem", fontWeight: 800, marginBottom: "1rem", color: "var(--openloop-text)" }}>
         Trust Score
       </h1>
@@ -38,5 +39,6 @@ export default function TrustScoreExplainer() {
         <Link href="/docs/guardrails" style={{ color: "var(--openloop-primary)", fontWeight: 600, textDecoration: "underline" }}>Trust &amp; Safety / Guardrails</Link>
       </p>
     </main>
+  </>
   );
 }

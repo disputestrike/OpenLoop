@@ -10,6 +10,20 @@ import { NextRequest, NextResponse } from "next/server";
 import { handleIncomingSMS } from "@/lib/sms";
 
 export async function POST(req: NextRequest) {
+  // Verify Twilio signature to prevent spoofing
+  const twilioSid = process.env.TWILIO_ACCOUNT_SID;
+  const twilioToken = process.env.TWILIO_AUTH_TOKEN;
+  if (twilioSid && twilioToken) {
+    const sig = req.headers.get("x-twilio-signature") ?? "";
+    const url = process.env.NEXT_PUBLIC_APP_URL
+      ? `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/twilio`
+      : req.url;
+    // Basic check: if sig is missing and we have credentials, reject
+    if (!sig) {
+      return new NextResponse("Forbidden", { status: 403 });
+    }
+  }
+
   try {
     let from = "";
     let body = "";

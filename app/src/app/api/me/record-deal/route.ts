@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
     const webhook = await query<{ webhook_url: string | null }>(`SELECT webhook_url FROM loops WHERE id = $1`, [session.loopId]);
     const url = webhook.rows[0]?.webhook_url;
     if (url && url.startsWith("http")) {
-      fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ event: "deal_completed", amountCents, sellerLoopId }) }).catch(() => {});
+      fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ event: "deal_completed", amountCents, sellerLoopId }) }).catch((e: unknown) => { if (process.env.NODE_ENV !== "production") console.warn("[db silent]", e); });
     }
   } catch {
     // webhook_url column may not exist yet

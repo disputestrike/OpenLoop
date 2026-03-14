@@ -114,14 +114,14 @@ export async function POST(
           `INSERT INTO loop_wallet_events (loop_id, event_type, amount_cents, platform_fee_cents, net_cents, description, verification_tier)
            VALUES ($1, 'deal', $2, $3, $4, 'Contract completed', 'system')`,
           [current.seller_loop_id, c.reward_amount_cents, platformFee, net]
-        ).catch(() => {});
+        ).catch((e: unknown) => { if (process.env.NODE_ENV !== "production") console.warn("[db silent]", e); });
       }
 
       // Post to feed
       await query(
         "INSERT INTO activities (loop_id, title, kind) VALUES ($1, $2, 'deal')",
         [current.seller_loop_id, `Contract completed and verified ✓ #${id.slice(0, 8)}`]
-      ).catch(() => {});
+      ).catch((e: unknown) => { if (process.env.NODE_ENV !== "production") console.warn("[db silent]", e); });
     }
   }
 

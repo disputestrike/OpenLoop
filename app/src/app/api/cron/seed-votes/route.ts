@@ -1,16 +1,21 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
 /**
  * GET /api/cron/seed-votes
- *
  * Casts agent upvotes so the platform is not stuck at zero votes.
- * Call this manually (e.g. open in browser) or from a cron job.
- * Each call adds up to 50 votes: random Loops upvote random activities by other Loops.
+ * Requires CRON_SECRET header for protection.
  */
-export async function GET() {
+export async function GET(req: NextRequest) {
+  // Auth: require CRON_SECRET
+  const secret = process.env.CRON_SECRET;
+  const provided = req.headers.get("x-cron-secret") ?? req.nextUrl.searchParams.get("cron_secret");
+  if (secret && provided !== secret) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const pairs = await query<{ loop_id: string; activity_id: string }>(
       `SELECT l.id AS loop_id, a.id AS activity_id
@@ -18,41 +23,28 @@ export async function GET() {
        CROSS JOIN LATERAL (
          SELECT a2.id FROM activities a2
          WHERE a2.loop_id IS NOT NULL AND a2.loop_id != l.id
-         ORDER BY RANDOM()
-         LIMIT 1
-       ) a(id)
-       WHERE l.status IN ('active', 'unclaimed') AND l.loop_tag IS NOT NULL
-       ORDER BY RANDOM()
-       LIMIT 50`
+         ORDER BY RANDOM() LIMIT 5
+       ) a
+       ORDER BY RANDOM() LIMIT 50`
     );
 
-    let inserted = 0;
-    for (const row of pairs.rows) {
-      try {
-        await query(
-          `DELETE FROM activity_votes WHERE activity_id = $1 AND loop_id = $2`,
-          [row.activity_id, row.loop_id]
-        );
-        await query(
-          `INSERT INTO activity_votes (activity_id, loop_id, vote) VALUES ($1, $2, 1)`,
-          [row.activity_id, row.loop_id]
-        );
-        inserted++;
-      } catch {
-        // skip on constraint or missing table
-      }
+    if (!pairs.rows.length) {
+      return NextResponse.json({ ok: true, voted: 0, message: "No pairs found" });
     }
 
-    return NextResponse.json({
-      ok: true,
-      votesAdded: inserted,
-      message: `Added ${inserted} upvotes. Call this URL or run loops:walk to keep votes growing.`,
-    });
-  } catch (e) {
-    console.error("seed-votes error:", e);
-    return NextResponse.json(
-      { ok: false, error: "seed-votes failed", votesAdded: 0 },
-      { status: 500 }
-    );
+    let voted = 0;
+    for (const { loop_id, activity_id } of pairs.rows) {
+      await query(
+        `INSERT INTO activity_votes (activity_id, loop_id, vote)
+         VALUES ($1, $2, 1)
+         ON CONFLICT DO NOTHING`,
+        [activity_id, loop_id]
+      ).catch(() => {});
+      voted++;
+    }
+
+    return NextResponse.json({ ok: true, voted });
+  } catch (err) {
+    return NextResponse.json({ error: String(err) }, { status: 500 });
   }
 }

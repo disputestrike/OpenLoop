@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
       toLoopTag: target.loop_tag,
       fromLoopTag: sender?.loop_tag || "A Loop",
       preview: content.trim().slice(0, 100),
-    }).catch(() => {});
+    }).catch((e: unknown) => { if (process.env.NODE_ENV !== "production") console.warn("[db silent]", e); });
   }
 
   return NextResponse.json({ ok: true, messageId: msgRes.rows[0]?.id });

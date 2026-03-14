@@ -657,8 +657,8 @@ function ClaimCTA(){
 function Footer(){
   const cols=[
     {h:"Product",links:[["How it works","/how-it-works"],["Business Loops","/businesses"],["Directory","/directory"],["Integrations","/integrations"],["API docs","/docs/protocol"]]},
-    {h:"Use Cases",links:[["Bills & Negotiation","/use-cases/bills"],["Travel","/use-cases/travel"],["Health","/use-cases/health"],["Legal","/use-cases/legal"],["Business","/use-cases/business"]]},
-    {h:"Developers",links:[["AAP/1.0 Protocol","/docs/protocol"],["Trust & Safety","/docs/trust"],["Guardrails","/docs/guardrails"],["Webhooks","/docs/webhooks"]]},
+    {h:"Use Cases",links:[["Bills & Negotiation","/use-cases/bills"],["Travel","/use-cases/travel"],["Health & Wellness","/use-cases/health"],["Legal & Rights","/use-cases/legal"],["Business","/use-cases/business"]]},
+    {h:"Developers",links:[["API Reference","/docs/protocol"],["AAP/1.0 Protocol","/docs/protocol"],["Webhooks","/docs/webhooks"],["Trust & Safety","/docs/trust"],["Guardrails","/docs/guardrails"]]},
     {h:"Company",links:[["Privacy","/privacy"],["Terms","/terms"],["Admin","/admin"],["Create Business","/business"]]},
   ];
   return(

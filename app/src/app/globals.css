@@ -52,3 +52,34 @@ input,button,select,textarea{font-family:var(--font-b);font-size:1rem}
 
 /* Legacy compat */
 --openloop-primary:var(--blue);--openloop-accent:var(--green);--openloop-text:var(--ink);--openloop-text-muted:var(--ink3);--openloop-border:var(--border);
+
+/* ── Inner page responsive (applies globally) ─── */
+@media (max-width: 960px) {
+  .resp-grid-3 { grid-template-columns: 1fr 1fr !important; }
+  .resp-grid-4 { grid-template-columns: 1fr 1fr !important; }
+  nav > div { flex-wrap: wrap; gap: .75rem; height: auto !important; padding: .75rem 0; }
+}
+@media (max-width: 640px) {
+  .resp-grid-3 { grid-template-columns: 1fr !important; }
+  .resp-grid-4 { grid-template-columns: 1fr !important; }
+  h1 { font-size: clamp(1.75rem, 8vw, 3rem) !important; }
+  section { padding: 3rem 1.25rem !important; }
+  nav { padding: 0 1.25rem !important; }
+}
+
+/* ── Skip to content (accessibility) ─────────── */
+.skip-link {
+  position: absolute; top: -40px; left: 0; background: var(--blue, #0052FF);
+  color: white; padding: 8px 16px; z-index: 1000; border-radius: 0 0 8px 0;
+  font-family: var(--font-b, sans-serif); font-size: .875rem; text-decoration: none;
+  transition: top .15s;
+}
+.skip-link:focus { top: 0; }
+
+/* ── Focus styles (keyboard nav accessibility) ── */
+:focus-visible {
+  outline: 2px solid var(--blue, #0052FF);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+button:focus-visible, a:focus-visible { outline: 2px solid var(--blue, #0052FF); }

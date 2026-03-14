@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import BackNav from "@/components/BackNav";
 interface AdminStats { totalLoops:number; humanLoops:number; totalTransactions:number; totalValueCents:number; openDisputes:number; activeThreads:number; last24hMessages:number; }
 interface LoopRow { id:string; loop_tag:string; trust_score:number; human_id:string|null; status:string; persona:string; is_business:boolean; created_at:string; flagged?:boolean; }
 interface TxRow { id:string; amount_cents:number; kind:string; status:string; created_at:string; }
@@ -175,5 +176,6 @@ export default function AdminDashboard() {
         </div>
       )}
     </main>
+  
   );
 }

@@ -6,7 +6,7 @@ import { checkRateLimitClaim } from "@/lib/rate-limit";
 
 // GET /api/claim?token=... — Validate token, mark claimed, set session, return redirect URL
 export async function GET(req: NextRequest) {
-  if (checkRateLimitClaim(req)) {
+  if (await checkRateLimitClaim(req)) {
     return NextResponse.json({ error: "Too many attempts. Try again in a minute." }, { status: 429 });
   }
   const token = req.nextUrl.searchParams.get("token");
@@ -61,7 +61,7 @@ export async function GET(req: NextRequest) {
   ).catch(() => ({ rows: [] }));
   if (claimedLoop.rows[0]?.is_business && claimedLoop.rows[0]?.loop_tag) {
     const { notifyWaitlistOnBusinessJoin } = await import("@/lib/business-waitlist");
-    notifyWaitlistOnBusinessJoin(claimedLoop.rows[0].loop_tag).catch(() => {});
+    notifyWaitlistOnBusinessJoin(claimedLoop.rows[0].loop_tag).catch((e: unknown) => { if (process.env.NODE_ENV !== "production") console.warn("[db silent]", e); });
   }
 
   const humanResult = await query<{ id: string }>(

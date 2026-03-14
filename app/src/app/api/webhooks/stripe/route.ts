@@ -50,13 +50,13 @@ export async function POST(req: NextRequest) {
       await query(
         "INSERT INTO trust_score_events (loop_id, previous_score, new_score, reason) VALUES ($1, $2, $3, 'real_payment')",
         [loopId, prev, newScore]
-      ).catch(() => {});
+      ).catch((e: unknown) => { if (process.env.NODE_ENV !== "production") console.warn("[db silent]", e); });
 
       // Post to feed
       await query(
         "INSERT INTO activities (loop_id, title, kind) VALUES ($1, $2, 'deal')",
         [`${loopId}`, `Real transaction completed — $${(net / 100).toFixed(2)} to Loop Wallet ✓`]
-      ).catch(() => {});
+      ).catch((e: unknown) => { if (process.env.NODE_ENV !== "production") console.warn("[db silent]", e); });
     }
 
     if (kind === "contract_payment") {

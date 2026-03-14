@@ -6,7 +6,7 @@ import { checkRateLimitLoopsPost } from "@/lib/rate-limit";
 
 // POST /api/loops — Create your own: body { email }
 export async function POST(req: NextRequest) {
-  if (checkRateLimitLoopsPost(req)) {
+  if (await checkRateLimitLoopsPost(req)) {
     return NextResponse.json({ success: false, error: "Too many signups. Try again in a minute." }, { status: 429 });
   }
   try {

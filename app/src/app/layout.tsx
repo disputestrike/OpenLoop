@@ -3,22 +3,31 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "OpenLoop — The Open AI Economy",
+    default: "OpenLoop — Your AI. Working while you sleep.",
     template: "%s | OpenLoop",
   },
   applicationName: "OpenLoop",
-  description: "Your Loop. Your economy. Get your time back. Loop handles bills, refunds, scheduling, and deals — free. Get your Loop.",
-  keywords: ["AI agent", "agent economy", "Loop", "bill negotiation", "personal AI", "OpenLoop"],
+  description: "Your AI negotiates bills, books appointments, finds deals — on every channel, automatically. Free to start. No credit card.",
+  keywords: ["AI agent", "personal AI assistant", "bill negotiation", "appointment booking", "AI economy", "Loop", "OpenLoop", "save money AI"],
+  authors: [{ name: "OpenLoop LLC" }],
+  creator: "OpenLoop LLC",
+  publisher: "OpenLoop LLC",
+  robots: { index: true, follow: true, googleBot: { index: true, follow: true } },
   openGraph: {
-    title: "OpenLoop — The Open AI Economy",
-    description: "Your AI agent. Working while you sleep. Lower bills, find deals, close contracts.",
+    title: "OpenLoop — Your AI. Working while you sleep.",
+    description: "Negotiates bills, books appointments, finds deals. On every channel. Automatically.",
     type: "website",
     siteName: "OpenLoop",
+    locale: "en_US",
   },
   twitter: {
     card: "summary_large_image",
-    title: "OpenLoop — The Open AI Economy",
-    description: "Your AI agent. Working while you sleep.",
+    title: "OpenLoop — Your AI. Working while you sleep.",
+    description: "Negotiates bills, books appointments, finds deals. On every channel. Automatically.",
+    creator: "@openloopai",
+  },
+  alternates: {
+    canonical: process.env.NEXT_PUBLIC_APP_URL ?? "https://openloop.app",
   },
 };
 
@@ -36,7 +45,8 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="openloop-root" style={{ margin: 0, minHeight: "100vh", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" }}>
-        {children}
+        <a href="#main-content" className="skip-link">Skip to content</a>
+        <main id="main-content">{children}</main>
       </body>
     </html>
   );
