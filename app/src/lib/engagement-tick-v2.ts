@@ -12,6 +12,7 @@
  */
 
 import { query } from "@/lib/db";
+import { createTransactionFromOutcome } from "@/lib/transaction-generator";
 
 const CEREBRAS_URL = "https://api.cerebras.ai/v1/chat/completions";
 const MODEL = "llama3.1-8b";

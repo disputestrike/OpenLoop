@@ -662,7 +662,7 @@ function Footer(){
     {h:"Company",links:[["Privacy","/privacy"],["Terms","/terms"],["Admin","/admin"],["Create Business","/business"]]},
   ];
   return(
-    <footer style={{background:"#080E1E",borderTop:"1px solid rgba(255,255,255,0.06)",padding:"4.5rem 2rem 2.5rem"}}>
+    <footer style={{background:"white",borderTop:"1px solid #E5E7EB",padding:"4.5rem 2rem 2.5rem"}}>
       <div style={{maxWidth:"72rem",margin:"0 auto"}}>
         <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr",gap:"3rem",marginBottom:"3.5rem"}} className="resp-2col">
           <div>
@@ -670,31 +670,31 @@ function Footer(){
               <div style={{width:30,height:30,borderRadius:"50%",background:"var(--blue)",display:"flex",alignItems:"center",justifyContent:"center"}}>
                 <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5" stroke="white" strokeWidth="2"/><circle cx="7" cy="7" r="2" fill="white"/></svg>
               </div>
-              <span style={{fontFamily:"var(--font-d)",fontWeight:700,fontSize:"1rem",color:"white",letterSpacing:"-0.02em"}}>OpenLoop</span>
+              <span style={{fontFamily:"var(--font-d)",fontWeight:700,fontSize:"1rem",color:"#000",letterSpacing:"-0.02em"}}>OpenLoop</span>
             </div>
-            <p style={{fontFamily:"var(--font-b)",fontSize:".83rem",color:"rgba(255,255,255,0.3)",lineHeight:1.75,maxWidth:"22rem",marginBottom:"1.25rem"}}>The open AI agent economy. Your Loop negotiates, books, researches, and closes deals — on every channel, 24/7. Free to start.</p>
+            <p style={{fontFamily:"var(--font-b)",fontSize:".83rem",color:"#666",lineHeight:1.75,maxWidth:"22rem",marginBottom:"1.25rem"}}>The open AI agent economy. Your Loop negotiates, books, researches, and closes deals — on every channel, 24/7. Free to start.</p>
             <div style={{display:"flex",gap:"8px",flexWrap:"wrap"}}>
               {["AI Agent Economy","400+ Integrations","Trust Score","Agent-to-Agent"].map(t=>(
-                <span key={t} style={{fontFamily:"var(--font-m)",fontSize:".62rem",color:"rgba(255,255,255,0.25)",background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:"var(--r-sm)",padding:"3px 8px"}}>{t}</span>
+                <span key={t} style={{fontFamily:"var(--font-m)",fontSize:".62rem",color:"#666",background:"#F0F0F0",border:"1px solid #E5E7EB",borderRadius:"var(--r-sm)",padding:"3px 8px"}}>{t}</span>
               ))}
             </div>
           </div>
           {cols.map(col=>(
             <div key={col.h}>
-              <div style={{fontFamily:"var(--font-m)",fontSize:".65rem",fontWeight:600,letterSpacing:".1em",textTransform:"uppercase",color:"rgba(255,255,255,0.25)",marginBottom:"1rem"}}>{col.h}</div>
+              <div style={{fontFamily:"var(--font-m)",fontSize:".65rem",fontWeight:600,letterSpacing:".1em",textTransform:"uppercase",color:"#999",marginBottom:"1rem"}}>{col.h}</div>
               {col.links.map(([l,h])=>(
                 <div key={l} style={{marginBottom:".5rem"}}>
-                  <Link href={h} style={{fontFamily:"var(--font-b)",fontSize:".82rem",color:"rgba(255,255,255,0.4)",textDecoration:"none",transition:"color .15s"}}>{l}</Link>
+                  <Link href={h} style={{fontFamily:"var(--font-b)",fontSize:".82rem",color:"#333",textDecoration:"none",transition:"color .15s"}}>{l}</Link>
                 </div>
               ))}
             </div>
           ))}
         </div>
-        <div style={{borderTop:"1px solid rgba(255,255,255,0.06)",paddingTop:"1.5rem",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:"1rem"}}>
-          <p style={{fontFamily:"var(--font-m)",fontSize:".7rem",color:"rgba(255,255,255,0.2)"}}>© 2026 OpenLoop LLC · You own your data. Export anytime.</p>
+        <div style={{borderTop:"1px solid #E5E7EB",paddingTop:"1.5rem",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:"1rem"}}>
+          <p style={{fontFamily:"var(--font-m)",fontSize:".7rem",color:"#999"}}>© 2026 OpenLoop LLC · You own your data. Export anytime.</p>
           <div style={{display:"flex",gap:"1.5rem"}}>
             {[["Privacy","/privacy"],["Terms","/terms"]].map(([l,h])=>(
-              <Link key={l} href={h} style={{fontFamily:"var(--font-b)",fontSize:".7rem",color:"rgba(255,255,255,0.2)",textDecoration:"none"}}>{l}</Link>
+              <Link key={l} href={h} style={{fontFamily:"var(--font-b)",fontSize:".7rem",color:"#999",textDecoration:"none"}}>{l}</Link>
             ))}
           </div>
         </div>
