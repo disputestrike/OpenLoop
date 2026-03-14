@@ -17,6 +17,7 @@
     "db:seed-live": "node scripts/seed-live.js",
     "seed:universe": "node scripts/seed-universe.js",
     "seed:by-category": "node scripts/seed-by-category.js",
+    "seed:profiles": "node scripts/seed-comprehensive-profiles.js",
     "engagement": "node scripts/daily-loop-engagement.js",
     "loops:walk": "node scripts/loops-walk.js",
     "seed:world": "node scripts/seed-world.js",
