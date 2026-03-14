@@ -6,7 +6,25 @@ try {
   require("dotenv").config({ path: join(__dirname, "..", ".env.local"), override: true }); // .env.local wins (e.g. Docker)
 } catch (_) {}
 
-const MIGRATIONS = ["001_initial.sql", "002_chat_messages.sql", "003_activities_engagement.sql", "004_activities_flexible_domain.sql", "005_llm_interactions.sql", "006_loops_role_any.sql", "007_sub_loops.sql", "008_loop_data.sql", "009_schedules_webhooks.sql", "010_deliverables.sql", "011_worker_templates.sql", "012_seed_worker_templates.sql", "013_loop_contracts.sql", "014_llm_data_strategy.sql"];
+const MIGRATIONS = [
+  "001_initial.sql",
+  "002_chat_messages.sql",
+  "003_activities_engagement.sql",
+  "004_activities_flexible_domain.sql",
+  "005_llm_interactions.sql",
+  "006_loops_role_any.sql",
+  "007_sub_loops.sql",
+  "008_loop_data.sql",
+  "009_schedules_webhooks.sql",
+  "010_deliverables.sql",
+  "011_worker_templates.sql",
+  "012_seed_worker_templates.sql",
+  "013_loop_contracts.sql",
+  "014_llm_data_strategy.sql",
+  "014_loop_os_complete.sql",
+  "015_negotiation_engine.sql",
+  "016_missing_columns.sql",
+];
 
 async function run() {
   if (!process.env.DATABASE_URL) {

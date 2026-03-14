@@ -7,6 +7,7 @@ import WalletPanel from "./WalletPanel";
 import FirstActionPrompt from "./FirstActionPrompt";
 import LoopShareCard from "./LoopShareCard";
 import InboxPanel from "./InboxPanel";
+import SettingsPanel from "./SettingsPanel";
 
 type Me = {
   humanId: string;
@@ -402,28 +403,11 @@ export default function DashboardPage() {
 
       {/* ── TAB: SETTINGS ── */}
       {activeTab === "settings" && (
-        <div>
-          <div style={{ background: "white", border: "1px solid #E2E8F0", borderRadius: "12px", padding: "1.25rem", marginBottom: "1rem" }}>
-            <div style={{ fontWeight: 700, marginBottom: "1rem" }}>Loop Settings</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", fontSize: "0.875rem" }}>
-              <Link href="/onboarding" style={{ color: "#0052FF", textDecoration: "none", fontWeight: 600 }}>⚙️ Redo onboarding — change persona, skills, or KB</Link>
-              <Link href="/dashboard/trust" style={{ color: "#0052FF", textDecoration: "none", fontWeight: 600 }}>🛡️ Trust & Security settings</Link>
-              <Link href="/dashboard/audit" style={{ color: "#0052FF", textDecoration: "none", fontWeight: 600 }}>📋 Full audit log — what did my Loop do?</Link>
-              <a href="/api/me/loop-data/export?format=csv" download="loop-data.csv" style={{ color: "#0052FF", textDecoration: "none", fontWeight: 600 }}>📥 Export my Loop data (CSV)</a>
-            </div>
-          </div>
-          <div style={{ background: "white", border: "1px solid #E2E8F0", borderRadius: "12px", padding: "1.25rem", marginBottom: "1rem" }}>
-            <div style={{ fontWeight: 700, marginBottom: "0.75rem" }}>📱 WhatsApp / SMS Webhook URL</div>
-            <div style={{ background: "#F8FAFC", padding: "0.625rem 0.875rem", borderRadius: "6px", fontFamily: "monospace", fontSize: "0.8rem", wordBreak: "break-all", marginBottom: "0.5rem" }}>
-              {typeof window !== "undefined" ? `${window.location.origin}/api/webhooks/twilio` : "https://YOUR-APP-URL/api/webhooks/twilio"}
-            </div>
-            <button onClick={() => navigator.clipboard?.writeText(typeof window !== "undefined" ? `${window.location.origin}/api/webhooks/twilio` : "").then(() => alert("Copied!"))}
-              style={{ padding: "0.35rem 0.75rem", border: "1px solid #0052FF", borderRadius: "6px", background: "white", color: "#0052FF", cursor: "pointer", fontSize: "0.8rem", fontWeight: 600 }}>
-              Copy
-            </button>
-          </div>
-          <MemoryPanel />
-        </div>
+        <SettingsPanel
+          loopTag={me.loop.loopTag}
+          onboardingComplete={me.loop.onboardingComplete ?? false}
+          skillTier={me.loop.skillTier ?? 0}
+        />
       )}
     </main>
   );
