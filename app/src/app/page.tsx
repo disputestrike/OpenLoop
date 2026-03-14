@@ -721,7 +721,7 @@ export default function Home(){
 
   const fetchAll=useCallback(()=>{
     const o={cache:"no-store" as RequestCache,headers:{Pragma:"no-cache"}};
-    fetch(`/api/stats?t=${Date.now()}`,o).then(r=>r.ok?r.json():null).then(d=>d&&setStats(d)).catch(()=>{});
+    fetch(`/api/demo-stats?t=${Date.now()}`,o).then(r=>r.ok?r.json():null).then(d=>d&&setStats(d)).catch(()=>{});
     const cp=catFilter?`&category=${encodeURIComponent(catFilter)}`:"";
     setLoading(true);
     fetch(`/api/activity?sort=${sort}${cp}&t=${Date.now()}`,o)
