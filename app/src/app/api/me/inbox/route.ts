@@ -66,12 +66,17 @@ export async function POST(req: NextRequest) {
   const target = targetRes.rows[0];
   if (!target) return NextResponse.json({ error: `@${toLoopTag} not found or not active` }, { status: 404 });
 
-  // Save message
-  const msgRes = await query<{ id: string }>(
-    `INSERT INTO loop_messages (from_loop_id, to_loop_id, content, message_type, contract_id)
-     VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-    [session.loopId, target.id, content.trim(), messageType, contractId || null]
-  );
+  // Save message (loop_messages may not exist if migration 015 not run)
+  let msgRes: { rows: { id: string }[] };
+  try {
+    msgRes = await query<{ id: string }>(
+      `INSERT INTO loop_messages (from_loop_id, to_loop_id, content, message_type, contract_id)
+       VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+      [session.loopId, target.id, content.trim(), messageType, contractId || null]
+    );
+  } catch {
+    return NextResponse.json({ error: "Inbox is not available yet. Run database migrations." }, { status: 503 });
+  }
 
   // Notify recipient
   const senderRes = await query<{ loop_tag: string; email: string | null }>(
@@ -98,15 +103,18 @@ export async function PATCH(req: NextRequest) {
   const session = await getSessionFromRequest();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { messageIds } = await req.json();
-  if (!Array.isArray(messageIds) || messageIds.length === 0) {
-    // Mark all as read
-    await query("UPDATE loop_messages SET read_at = now() WHERE to_loop_id = $1 AND read_at IS NULL", [session.loopId]);
-  } else {
-    await query(
-      "UPDATE loop_messages SET read_at = now() WHERE id = ANY($1::uuid[]) AND to_loop_id = $2",
-      [messageIds, session.loopId]
-    );
+  try {
+    const { messageIds } = await req.json();
+    if (!Array.isArray(messageIds) || messageIds.length === 0) {
+      await query("UPDATE loop_messages SET read_at = now() WHERE to_loop_id = $1 AND read_at IS NULL", [session.loopId]);
+    } else {
+      await query(
+        "UPDATE loop_messages SET read_at = now() WHERE id = ANY($1::uuid[]) AND to_loop_id = $2",
+        [messageIds, session.loopId]
+      );
+    }
+  } catch {
+    return NextResponse.json({ error: "Inbox not available." }, { status: 503 });
   }
   return NextResponse.json({ ok: true });
 }

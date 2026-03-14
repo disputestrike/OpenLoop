@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionFromRequest } from "@/lib/auth";
 import { query } from "@/lib/db";
+import { logAudit } from "@/lib/audit";
 
 // PUT /api/me/loop-tag — Set or update current Loop's display name (must be unique, alphanumeric + underscore)
 export async function PUT(req: NextRequest) {
@@ -33,6 +34,7 @@ export async function PUT(req: NextRequest) {
     `UPDATE loops SET loop_tag = $1, updated_at = now() WHERE id = $2`,
     [loopTag, session.loopId]
   );
+  await logAudit({ actorType: "loop", actorId: session.loopId, action: "loop_tag_update", resourceType: "loop", resourceId: session.loopId, metadata: { loopTag } });
 
   return NextResponse.json({ success: true, loopTag });
 }

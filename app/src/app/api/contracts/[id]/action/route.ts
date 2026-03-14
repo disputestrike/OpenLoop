@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { getSessionFromRequest } from "@/lib/auth";
 import { publishEvent, EventTypes } from "@/lib/event-bus";
+import { logAudit } from "@/lib/audit";
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
   requested: ["accepted", "cancelled"],
@@ -75,6 +76,8 @@ export async function POST(
       [newStatus, id]
     );
   }
+
+  await logAudit({ actorType: "loop", actorId: session.loopId, action: "contract_action", resourceType: "contract", resourceId: id, metadata: { action, newStatus } });
 
   // On verify → complete, release Stripe payout, notify parties, update trust
   if (newStatus === "verified") {

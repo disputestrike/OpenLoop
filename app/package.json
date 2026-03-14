@@ -24,6 +24,7 @@
     "test:edge": "node scripts/test-edge-cases.js",
     "check": "node scripts/check-all.js",
     "smoke": "node scripts/smoke.js",
+    "test:click": "node scripts/click-through-test.js",
     "verify": "node scripts/verify-all.js",
     "worker": "npx ts-node --project tsconfig.json src/workers/business-dag-worker.ts",
     "check-deploy": "node scripts/check-deployment.js"

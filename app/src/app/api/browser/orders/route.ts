@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
     `SELECT id, order_type, target_business, description, amount_cents, status,
             approval_message, confirmation_id, actual_amount_cents, savings_cents,
             created_at, approved_at
-     FROM agent_orders WHERE loop_id = $1 ${statusFilter}
+     FROM loop_agent_orders WHERE loop_id = $1 ${statusFilter}
      ORDER BY created_at DESC LIMIT 30`,
     [session.loopId]
   ).catch(() => ({ rows: [] }));
@@ -50,7 +50,7 @@ export async function PUT(req: NextRequest) {
     id: string; target_business: string; target_url: string;
     description: string; amount_cents: number;
   }>(
-    "SELECT id, target_business, target_url, description, amount_cents FROM agent_orders WHERE id = $1 AND loop_id = $2 AND status = 'pending_approval'",
+    "SELECT id, target_business, target_url, description, amount_cents FROM loop_agent_orders WHERE id = $1 AND loop_id = $2 AND status = 'pending_approval'",
     [orderId, session.loopId]
   );
   const order = orderRes.rows[0];
@@ -58,7 +58,7 @@ export async function PUT(req: NextRequest) {
 
   if (action === "reject") {
     await query(
-      "UPDATE agent_orders SET status = 'cancelled', approved_by = 'human', approved_at = now() WHERE id = $1",
+      "UPDATE loop_agent_orders SET status = 'cancelled', approved_by = 'human', approved_at = now() WHERE id = $1",
       [orderId]
     );
     // Notify Loop
@@ -71,7 +71,7 @@ export async function PUT(req: NextRequest) {
 
   // Approve — update and execute
   await query(
-    "UPDATE agent_orders SET status = 'executing', approved_by = 'human', approved_at = now() WHERE id = $1",
+    "UPDATE loop_agent_orders SET status = 'executing', approved_by = 'human', approved_at = now() WHERE id = $1",
     [orderId]
   );
 
@@ -98,7 +98,7 @@ export async function PUT(req: NextRequest) {
 
   // Update order
   await query(
-    "UPDATE agent_orders SET status = $1, actual_amount_cents = $2, savings_cents = $3, confirmation_id = $4, updated_at = now() WHERE id = $5",
+    "UPDATE loop_agent_orders SET status = $1, actual_amount_cents = $2, savings_cents = $3, confirmation_id = $4, updated_at = now() WHERE id = $5",
     [result.success ? "completed" : "failed", order.amount_cents, result.savingsCents || 0, result.confirmationId || null, orderId]
   );
 

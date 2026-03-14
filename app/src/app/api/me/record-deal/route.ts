@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSessionFromRequest } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { checkFraud } from "@/lib/anti-fraud";
+import { logAudit } from "@/lib/audit";
 
 /** POST /api/me/record-deal — Logged-in user's Loop records a sandbox deal (buyer). Body: { amountCents, sellerLoopId? } */
 export async function POST(req: NextRequest) {
@@ -44,6 +45,7 @@ export async function POST(req: NextRequest) {
     `INSERT INTO transactions (buyer_loop_id, seller_loop_id, amount_cents, currency, kind, status, completed_at) VALUES ($1, $2, $3, 'USD', 'sandbox', 'completed', NOW())`,
     [session.loopId, sellerLoopId, amountCents]
   );
+  await logAudit({ actorType: "loop", actorId: session.loopId, action: "record_deal", resourceType: "transaction", metadata: { amountCents, sellerLoopId } });
   try {
     const webhook = await query<{ webhook_url: string | null }>(`SELECT webhook_url FROM loops WHERE id = $1`, [session.loopId]);
     const url = webhook.rows[0]?.webhook_url;

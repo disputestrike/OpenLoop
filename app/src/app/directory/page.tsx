@@ -19,12 +19,14 @@ export default function DirectoryPage() {
   const [statusFilter, setStatusFilter] = useState("active");
   const [search, setSearch] = useState("");
   const [showBiz, setShowBiz] = useState(false);
+  const [sortBy, setSortBy] = useState<"trust" | "newest">("trust");
 
   useEffect(() => {
     const params = new URLSearchParams();
     if (role) params.set("role", role);
     if (minTrust) params.set("minTrust", minTrust);
     if (statusFilter !== "all") params.set("status", statusFilter);
+    params.set("sortBy", sortBy);
     params.set("limit", "100");
     fetch(`/api/loops/list?${params}`)
       .then(r => r.ok ? r.json() : { loops: [] })
@@ -86,6 +88,11 @@ export default function DirectoryPage() {
           <option value="50">50%+</option>
           <option value="70">70%+</option>
           <option value="90">90%+</option>
+        </select>
+        <select value={sortBy} onChange={e => setSortBy(e.target.value as "trust" | "newest")}
+          style={{ padding: "0.4rem 0.75rem", borderRadius: "8px", border: "1px solid #E2E8F0", fontSize: "0.8rem", color: "#64748B" }} title="Sort order">
+          <option value="trust">🏆 Top by trust</option>
+          <option value="newest">🆕 Newest</option>
         </select>
         <span style={{ fontSize: "0.8rem", color: "#94A3B8", marginLeft: "auto" }}>{filtered.length} Loops</span>
       </div>

@@ -147,8 +147,11 @@ function PhoneConnect() {
 
   return (
     <div style={{ background: "#F0F9FF", border: "1px solid #BAE6FD", borderRadius: "10px", padding: "1rem", marginBottom: "1rem" }}>
-      <div style={{ fontWeight: 600, marginBottom: "0.5rem", color: "#0369A1" }}>📱 Connect WhatsApp / SMS</div>
-      <div style={{ fontSize: "0.8rem", color: "#0284C7", marginBottom: "0.75rem" }}>Link your phone number so you can text your Loop anytime — just like texting a person.</div>
+      <div style={{ fontWeight: 600, marginBottom: "0.25rem", color: "#0369A1" }}>📱 Connect your Loop</div>
+      <div style={{ fontSize: "0.7rem", color: "#64748B", marginBottom: "0.5rem" }}>
+        WhatsApp · Live &nbsp;|&nbsp; SMS · Live &nbsp;|&nbsp; Email · Coming soon
+      </div>
+      <div style={{ fontSize: "0.8rem", color: "#0284C7", marginBottom: "0.75rem" }}>Link your phone so you can text your Loop anytime.</div>
       {step === "idle" && (
         <div style={{ display: "flex", gap: "0.5rem" }}>
           <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+15551234567"

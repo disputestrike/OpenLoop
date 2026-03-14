@@ -9,6 +9,12 @@ const NO_CACHE_HEADERS = {
   Pragma: "no-cache",
 };
 
+const TICK_THROTTLE_MS = 2 * 60 * 1000;
+const STALE_MS = 5 * 60 * 1000;
+declare global {
+  var _lastEngagementTickTime: number | undefined;
+}
+
 const DOCKER_DB =
   "postgresql://postgres:postgres@127.0.0.1:5433/openloop";
 
@@ -18,26 +24,35 @@ function getPool() {
   return url ? new Pool({ connectionString: url, max: 2 }) : null;
 }
 
+const FALLBACK_STATS = {
+  activeLoops: 0, totalLoops: 0, verifiedLoops: 0, dealsCompleted: 0, valueSavedCents: 0, valueSavedDeltaPercent: 0,
+  humansCount: 0, billsCount: 0, refundsCount: 0, meetingsCount: 0, commentsCount: 0, votesCount: 0,
+  activitiesCount: 0, activitiesLast24h: 0, commentsLast24h: 0, ts: Date.now(), latestActivityAt: null as string | null, latestCommentAt: null as string | null,
+};
+
+function fallbackResponse() {
+  return NextResponse.json(
+    { ...FALLBACK_STATS, ts: Date.now(), latestActivityAt: null, latestCommentAt: null },
+    { headers: NO_CACHE_HEADERS }
+  );
+}
+
 // GET /api/stats — Public stats for landing. Always live; uses Docker DB in dev.
 export async function GET() {
+  try {
   const pool = getPool();
-  if (!pool) {
-    return NextResponse.json(
-      { activeLoops: 0, totalLoops: 0, verifiedLoops: 0, dealsCompleted: 0, valueSavedCents: 0, valueSavedDeltaPercent: 0, humansCount: 0, billsCount: 0, refundsCount: 0, meetingsCount: 0, commentsCount: 0, votesCount: 0, activitiesCount: 0, activitiesLast24h: 0, commentsLast24h: 0, ts: Date.now(), latestActivityAt: null, latestCommentAt: null },
-      { headers: NO_CACHE_HEADERS }
-    );
-  }
+  if (!pool) return fallbackResponse();
 
   try {
     const humansPromise = pool.query(`SELECT COUNT(*)::text AS n FROM humans`).catch(() => ({ rows: [{ n: "0" }] }));
     const [loopsRes, totalLoopsRes, verifiedRes, txRes, valueRes, last7Res, prev7Res, humansRes, walletSavingsRes] = await Promise.all([
-      pool.query(`SELECT COUNT(*)::text AS n FROM loops WHERE status = 'active'`),
-      pool.query(`SELECT COUNT(*)::text AS n FROM loops WHERE loop_tag IS NOT NULL`),
-      pool.query(`SELECT COUNT(*)::text AS n FROM loops WHERE status IN ('active', 'unclaimed') AND loop_tag IS NOT NULL AND trust_score >= 70`),
-      pool.query(`SELECT COUNT(*)::text AS n FROM transactions WHERE status = 'completed'`),
-      pool.query(`SELECT COALESCE(SUM(amount_cents), 0)::text AS sum FROM transactions WHERE status = 'completed'`),
-      pool.query(`SELECT COALESCE(SUM(amount_cents), 0)::text AS sum FROM transactions WHERE status = 'completed' AND created_at >= NOW() - INTERVAL '7 days'`),
-      pool.query(`SELECT COALESCE(SUM(amount_cents), 0)::text AS sum FROM transactions WHERE status = 'completed' AND created_at >= NOW() - INTERVAL '14 days' AND created_at < NOW() - INTERVAL '7 days'`),
+      pool.query(`SELECT COUNT(*)::text AS n FROM loops WHERE status = 'active'`).catch(() => ({ rows: [{ n: "0" }] })),
+      pool.query(`SELECT COUNT(*)::text AS n FROM loops WHERE loop_tag IS NOT NULL`).catch(() => ({ rows: [{ n: "0" }] })),
+      pool.query(`SELECT COUNT(*)::text AS n FROM loops WHERE status IN ('active', 'unclaimed') AND loop_tag IS NOT NULL AND trust_score >= 70`).catch(() => ({ rows: [{ n: "0" }] })),
+      pool.query(`SELECT COUNT(*)::text AS n FROM transactions WHERE status = 'completed'`).catch(() => ({ rows: [{ n: "0" }] })),
+      pool.query(`SELECT COALESCE(SUM(amount_cents), 0)::text AS sum FROM transactions WHERE status = 'completed'`).catch(() => ({ rows: [{ sum: "0" }] })),
+      pool.query(`SELECT COALESCE(SUM(amount_cents), 0)::text AS sum FROM transactions WHERE status = 'completed' AND created_at >= NOW() - INTERVAL '7 days'`).catch(() => ({ rows: [{ sum: "0" }] })),
+      pool.query(`SELECT COALESCE(SUM(amount_cents), 0)::text AS sum FROM transactions WHERE status = 'completed' AND created_at >= NOW() - INTERVAL '14 days' AND created_at < NOW() - INTERVAL '7 days'`).catch(() => ({ rows: [{ sum: "0" }] })),
       pool.query(`SELECT COALESCE(SUM(amount_cents), 0)::text AS sum FROM loop_wallet_events WHERE event_type IN ('savings', 'deal')`).catch(() => ({ rows: [{ sum: "0" }] })),
       humansPromise,
     ]);
@@ -98,6 +113,17 @@ export async function GET() {
       // ignore
     }
 
+    // When data is stale, trigger engagement so "Last activity" stays recent (24/7)
+    const latest = latestActivityAt || latestCommentAt;
+    const latestMs = latest ? new Date(latest).getTime() : 0;
+    const now = Date.now();
+    const isStale = !latest || now - latestMs > STALE_MS;
+    const lastTick = globalThis._lastEngagementTickTime ?? 0;
+    if (process.env.DATABASE_URL && isStale && now - lastTick >= TICK_THROTTLE_MS) {
+      globalThis._lastEngagementTickTime = now;
+      import("@/lib/engagement-tick").then((m) => m.runEngagementTick()).catch(() => {});
+    }
+
     return NextResponse.json(
       {
         activeLoops,
@@ -127,28 +153,9 @@ export async function GET() {
     if (process.env.NODE_ENV === "development") {
       console.error("[stats] DB error:", msg);
     }
-    return NextResponse.json(
-      {
-        activeLoops: 0,
-        totalLoops: 0,
-        verifiedLoops: 0,
-        dealsCompleted: 0,
-        valueSavedCents: 0,
-        valueSavedDeltaPercent: 0,
-        humansCount: 0,
-        billsCount: 0,
-        refundsCount: 0,
-        meetingsCount: 0,
-        commentsCount: 0,
-        votesCount: 0,
-        activitiesCount: 0,
-        activitiesLast24h: 0,
-        commentsLast24h: 0,
-        ts: Date.now(),
-        latestActivityAt: null,
-        latestCommentAt: null,
-      },
-      { headers: NO_CACHE_HEADERS }
-    );
+    return fallbackResponse();
+  }
+  } catch {
+    return fallbackResponse();
   }
 }

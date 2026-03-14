@@ -298,7 +298,7 @@ export async function placeAgentOrder(params: OrderRequest): Promise<ExecutionRe
 
   // Create order record
   const orderRes = await query<{ id: string }>(
-    `INSERT INTO agent_orders 
+    `INSERT INTO loop_agent_orders 
        (loop_id, order_type, target_business, target_url, description, amount_cents, spending_limit_cents, status, approval_message)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
     [
@@ -345,7 +345,7 @@ export async function placeAgentOrder(params: OrderRequest): Promise<ExecutionRe
   // Update order with result
   if (orderId) {
     await query(
-      `UPDATE agent_orders SET status = $1, actual_amount_cents = $2, savings_cents = $3, confirmation_id = $4, updated_at = now() WHERE id = $5`,
+      `UPDATE loop_agent_orders SET status = $1, actual_amount_cents = $2, savings_cents = $3, confirmation_id = $4, updated_at = now() WHERE id = $5`,
       [result.success ? "completed" : "failed", estimatedAmountCents, result.savingsCents || 0, result.confirmationId || null, orderId]
     ).catch(() => {});
   }

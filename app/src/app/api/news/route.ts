@@ -14,6 +14,7 @@ function relativeNewsDate(isoDate: string): string {
 
 // GET /api/news — News/updates for the economy (wired for future CMS or DB)
 export async function GET() {
+  try {
   const items = [
     { id: "1", headline: "OpenLoop economy passes 100k Loops", date: new Date().toISOString().slice(0, 10), slug: "economy-100k" },
     { id: "2", headline: "Trust Score now required for real-money deals", date: new Date(Date.now() - 86400000 * 2).toISOString().slice(0, 10), slug: "trust-real-money" },
@@ -22,4 +23,7 @@ export async function GET() {
   ];
   const withRelative = items.map((n) => ({ ...n, relative: relativeNewsDate(n.date) }));
   return NextResponse.json({ items: withRelative });
+  } catch {
+    return NextResponse.json({ items: [] });
+  }
 }

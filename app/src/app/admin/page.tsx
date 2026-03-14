@@ -5,13 +5,15 @@ interface AdminStats { totalLoops:number; humanLoops:number; totalTransactions:n
 interface LoopRow { id:string; loop_tag:string; trust_score:number; human_id:string|null; status:string; persona:string; is_business:boolean; created_at:string; flagged?:boolean; }
 interface TxRow { id:string; amount_cents:number; kind:string; status:string; created_at:string; }
 interface DisputeRow { id:string; evidence:string; status:string; created_at:string; }
-type AdminTab = "overview"|"loops"|"transactions"|"disputes"|"fraud";
+type AdminTab = "overview"|"loops"|"transactions"|"disputes"|"fraud"|"audit";
+interface AuditEntry { id: string; created_at: string; actor_type: string; actor_id: string | null; action: string; resource_type: string | null; resource_id: string | null; metadata: unknown; }
 export default function AdminDashboard() {
   const [tab, setTab] = useState<AdminTab>("overview");
   const [stats, setStats] = useState<AdminStats|null>(null);
   const [loops, setLoops] = useState<LoopRow[]>([]);
   const [transactions, setTransactions] = useState<TxRow[]>([]);
   const [disputes, setDisputes] = useState<DisputeRow[]>([]);
+  const [auditEntries, setAuditEntries] = useState<AuditEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   useEffect(()=>{
@@ -34,7 +36,12 @@ export default function AdminDashboard() {
   async function flagLoop(id:string){
     setLoops(prev=>prev.map(l=>l.id===id?{...l,flagged:true,status:"flagged"}:l));
   }
-  const tabs=[{id:"overview",label:"📊 Overview"},{id:"loops",label:"🤖 Loops"},{id:"transactions",label:"💰 Transactions"},{id:"disputes",label:"⚖️ Disputes"},{id:"fraud",label:"🚨 Fraud"}] as const;
+  async function loadAudit(){
+    const q = typeof window !== "undefined" ? window.location.search : "";
+    const res = await fetch(`/api/admin/audit?limit=200${q ? "&" + q.slice(1) : ""}`, { credentials: "include" });
+    if (res.ok) { const d = await res.json(); setAuditEntries(d.entries || []); }
+  }
+  const tabs=[{id:"overview",label:"📊 Overview"},{id:"loops",label:"🤖 Loops"},{id:"transactions",label:"💰 Transactions"},{id:"disputes",label:"⚖️ Disputes"},{id:"fraud",label:"🚨 Fraud"},{id:"audit",label:"📋 Audit"}] as const;
   const card={background:"white",border:"1px solid #E2E8F0",borderRadius:"10px",padding:"1.25rem"};
   const stat=(label:string,val:string|number,color="#0052FF")=>(
     <div style={{...card,textAlign:"center"as const}}><div style={{fontSize:"1.875rem",fontWeight:800,color}}>{val}</div><div style={{fontSize:"0.8rem",color:"#64748B",marginTop:"0.25rem"}}>{label}</div></div>
@@ -120,6 +127,29 @@ export default function AdminDashboard() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+      {tab==="audit"&&(
+        <div>
+          <div style={{marginBottom:"1rem",display:"flex",alignItems:"center",gap:"0.5rem"}}>
+            <button onClick={loadAudit} style={{padding:"0.5rem 1rem",background:"#0052FF",color:"white",border:"none",borderRadius:"6px",cursor:"pointer",fontWeight:600}}>Load audit log</button>
+            <span style={{fontSize:"0.8rem",color:"#64748B"}}>Requires admin_secret in URL. Last 200 entries.</span>
+          </div>
+          <div style={{overflowX:"auto"as const}}>
+            <table style={{width:"100%",borderCollapse:"collapse"as const,fontSize:"0.8rem"}}>
+              <thead><tr style={{background:"#F8FAFC"}}>{"Time,Actor,Action,Resource,Details".split(",").map(h=><th key={h} style={{padding:"0.5rem 0.75rem",textAlign:"left"as const,color:"#64748B",fontWeight:600,borderBottom:"1px solid #E2E8F0"}}>{h}</th>)}</tr></thead>
+              <tbody>{auditEntries.map(e=>(
+                <tr key={e.id} style={{borderBottom:"1px solid #F1F5F9"}}>
+                  <td style={{padding:"0.5rem 0.75rem",color:"#94A3B8",whiteSpace:"nowrap"as const}}>{new Date(e.created_at).toLocaleString()}</td>
+                  <td style={{padding:"0.5rem 0.75rem"}}><span style={{fontWeight:600}}>{e.actor_type}</span>{e.actor_id&&<span style={{color:"#64748B",marginLeft:"4px"}}>{e.actor_id.slice(0,8)}…</span>}</td>
+                  <td style={{padding:"0.5rem 0.75rem",fontWeight:600,color:"#0052FF"}}>{e.action}</td>
+                  <td style={{padding:"0.5rem 0.75rem",color:"#64748B"}}>{e.resource_type}{e.resource_id&&` #${e.resource_id.slice(0,8)}`}</td>
+                  <td style={{padding:"0.5rem 0.75rem",fontSize:"0.75rem",color:"#94A3B8"}}>{typeof e.metadata==="object"&&e.metadata!==null?JSON.stringify(e.metadata).slice(0,60):""}</td>
+                </tr>
+              ))}</tbody>
+            </table>
+          </div>
+          {auditEntries.length===0&&tab==="audit"&&<div style={{color:"#94A3B8",textAlign:"center",padding:"2rem"}}>Click “Load audit log” (add ?admin_secret= to URL if needed)</div>}
         </div>
       )}
       {tab==="fraud"&&(

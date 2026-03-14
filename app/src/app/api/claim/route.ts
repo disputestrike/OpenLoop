@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { setSession } from "@/lib/session";
+import { logAudit } from "@/lib/audit";
+import { checkRateLimitClaim } from "@/lib/rate-limit";
 
 // GET /api/claim?token=... — Validate token, mark claimed, set session, return redirect URL
 export async function GET(req: NextRequest) {
+  if (checkRateLimitClaim(req)) {
+    return NextResponse.json({ error: "Too many attempts. Try again in a minute." }, { status: 429 });
+  }
   const token = req.nextUrl.searchParams.get("token");
   if (!token) {
     return NextResponse.json({ error: "Token required" }, { status: 400 });
@@ -66,6 +71,8 @@ export async function GET(req: NextRequest) {
   const humanId = humanResult.rows[0].id;
 
   const sessionToken = await setSession({ humanId, loopId: link.loop_id });
+
+  await logAudit({ actorType: "human", actorId: humanId, action: "claim", resourceType: "claim_link", resourceId: link.id });
 
   // New users go to onboarding, returning users go to dashboard
   const loopData = await query<{ onboarding_complete: boolean }>(

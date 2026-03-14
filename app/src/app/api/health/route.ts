@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { redisPing } from "@/lib/redis";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   const dbOk = await checkDb();
   const redisOk = process.env.REDIS_URL ? await redisPing() : true;

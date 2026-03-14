@@ -70,11 +70,21 @@ export async function POST(req: NextRequest) {
     `INSERT INTO loop_integrations (loop_id, integration_name, webhook_url, trigger_events, headers)
      VALUES ($1, $2, $3, $4, $5) RETURNING id`,
     [session.loopId, integrationName.trim(), webhookUrl.trim(), triggerEvents, JSON.stringify(headers || {})]
-  );
+  ).catch((e) => {
+    console.error("[integrations] POST", e);
+    return null;
+  });
+
+  if (!res?.rows?.[0]) {
+    return NextResponse.json(
+      { error: "Integrations not available. Run db:migrate to create loop_integrations table." },
+      { status: 503 }
+    );
+  }
 
   return NextResponse.json({
     ok: true,
-    integrationId: res.rows[0]?.id,
+    integrationId: res.rows[0].id,
     testPassed,
     message: testPassed
       ? `✅ ${integrationName} connected! Webhook test succeeded.`
@@ -106,7 +116,7 @@ export async function DELETE(req: NextRequest) {
   const id = req.nextUrl.searchParams.get("id");
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
 
-  await query("DELETE FROM loop_integrations WHERE id = $1 AND loop_id = $2", [id, session.loopId]);
+  await query("DELETE FROM loop_integrations WHERE id = $1 AND loop_id = $2", [id, session.loopId]).catch(() => null);
 
   return NextResponse.json({ ok: true });
 }

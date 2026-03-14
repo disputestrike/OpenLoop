@@ -81,7 +81,7 @@ export default function IntegrationsPanel() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
         <div>
           <div style={{ fontWeight: 700, marginBottom: "0.2rem" }}>🔗 Integrations</div>
-          <div style={{ fontSize: "0.8rem", color: "#64748B" }}>Connect your Loop to n8n, Zapier, Slack, and 400+ apps</div>
+          <div style={{ fontSize: "0.8rem", color: "#64748B" }}>Connect your Loop to Zapier (5000+ apps), n8n (400+), Slack, Make</div>
         </div>
         <button onClick={() => setShowAdd(!showAdd)}
           style={{ padding: "0.5rem 1rem", background: "#0052FF", color: "white", border: "none", borderRadius: "8px", cursor: "pointer", fontWeight: 600, fontSize: "0.875rem" }}>
@@ -91,8 +91,8 @@ export default function IntegrationsPanel() {
 
       {/* n8n callout */}
       <div style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: "10px", padding: "0.875rem 1rem", marginBottom: "1rem", fontSize: "0.8rem" }}>
-        <span style={{ fontWeight: 700, color: "#15803D" }}>💡 Recommended: n8n</span>
-        <span style={{ color: "#16A34A", marginLeft: "6px" }}>Free, self-hosted on Railway. 400+ integrations including Gmail, Slack, Notion, Google Sheets, Salesforce. Deploy in 2 minutes.</span>
+        <span style={{ fontWeight: 700, color: "#15803D" }}>💡 Zapier & n8n</span>
+        <span style={{ color: "#16A34A", marginLeft: "6px" }}>Zapier: 5000+ apps (Webhooks by Zapier). n8n: free, self-hosted, 400+ nodes. Both use the webhook URL above.</span>
       </div>
 
       {/* Add integration form */}

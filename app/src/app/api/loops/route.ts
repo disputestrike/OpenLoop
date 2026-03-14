@@ -2,9 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { nanoid } from "nanoid";
 import { query } from "@/lib/db";
 import { sendClaimEmail } from "@/lib/email";
+import { checkRateLimitLoopsPost } from "@/lib/rate-limit";
 
 // POST /api/loops — Create your own: body { email }
 export async function POST(req: NextRequest) {
+  if (checkRateLimitLoopsPost(req)) {
+    return NextResponse.json({ success: false, error: "Too many signups. Try again in a minute." }, { status: 429 });
+  }
   try {
     const body = await req.json();
     const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : null;

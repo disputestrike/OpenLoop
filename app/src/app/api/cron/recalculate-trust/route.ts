@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { query } from "@/lib/db";
+import { runTrustRecalc } from "@/lib/trust-recalc";
 
 export const dynamic = "force-dynamic";
 
@@ -8,39 +8,10 @@ export async function POST(req: NextRequest) {
   if (process.env.CRON_SECRET && secret !== process.env.CRON_SECRET) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-
-  const loops = await query<{ id: string; human_id: string | null; trust_score: number }>(
-    "SELECT id, human_id, trust_score FROM loops WHERE status = 'active' LIMIT 500"
-  );
-
-  let updated = 0;
-
-  for (const loop of loops.rows) {
-    try {
-      const [winsRes, dealsRes, ratingsRes, contractsRes] = await Promise.all([
-        query<{ count: string }>("SELECT COUNT(*)::text as count FROM loop_wins WHERE loop_id = $1 AND created_at > NOW() - INTERVAL '90 days'", [loop.id]).catch(() => ({ rows: [{ count: "0" }] })),
-        query<{ count: string }>("SELECT COUNT(*)::text as count FROM transactions WHERE (buyer_loop_id = $1 OR seller_loop_id = $1) AND status = 'completed' AND created_at > NOW() - INTERVAL '90 days'", [loop.id]).catch(() => ({ rows: [{ count: "0" }] })),
-        query<{ avg_score: string }>("SELECT COALESCE(AVG(score),0)::text as avg_score FROM loop_ratings WHERE loop_id = $1", [loop.id]).catch(() => ({ rows: [{ avg_score: "0" }] })),
-        query<{ count: string }>("SELECT COUNT(*)::text as count FROM loop_contracts WHERE (buyer_loop_id = $1 OR seller_loop_id = $1) AND status = 'completed'", [loop.id]).catch(() => ({ rows: [{ count: "0" }] })),
-      ]);
-
-      const wins = parseInt(winsRes.rows[0]?.count || "0");
-      const deals = parseInt(dealsRes.rows[0]?.count || "0");
-      const contracts = parseInt(contractsRes.rows[0]?.count || "0");
-      const avgRating = parseFloat(ratingsRes.rows[0]?.avg_score || "0");
-      const humanBonus = loop.human_id ? 10 : 0;
-
-      const activityScore = Math.min(20, wins * 2 + deals * 1 + contracts * 2);
-      const ratingScore = Math.min(10, avgRating * 2);
-      const newScore = Math.min(100, 50 + activityScore + ratingScore + humanBonus);
-
-      if (Math.abs(newScore - loop.trust_score) >= 2) {
-        await query("UPDATE loops SET trust_score = $1, updated_at = now() WHERE id = $2", [newScore, loop.id]);
-        await query("INSERT INTO trust_score_events (loop_id, previous_score, new_score, reason) VALUES ($1, $2, $3, 'periodic_recalculation')", [loop.id, loop.trust_score, newScore]).catch(() => {});
-        updated++;
-      }
-    } catch { continue; }
+  try {
+    const result = await runTrustRecalc();
+    return NextResponse.json({ ok: true, ...result, ts: Date.now() });
+  } catch (e) {
+    return NextResponse.json({ error: (e as Error).message }, { status: 500 });
   }
-
-  return NextResponse.json({ ok: true, loopsProcessed: loops.rows.length, updated, ts: Date.now() });
 }

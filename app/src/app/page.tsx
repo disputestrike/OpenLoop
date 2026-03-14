@@ -46,7 +46,7 @@ function Hero() {
           <p style={{ marginTop: "1rem", fontSize: "0.85rem", color: "var(--openloop-text-muted)" }}>Takes 60 seconds. Your Loop starts working immediately. No credit card.</p>
           {mounted && (
             <p style={{ marginTop: "1.5rem", fontSize: "0.9rem", color: "var(--openloop-text-muted)" }} suppressHydrationWarning>
-              {stats ? `${(stats.totalLoops ?? stats.activeLoops).toLocaleString()} Loops in sandbox · ${stats.dealsCompleted.toLocaleString()} deals completed` : "Loading…"}
+              {stats ? `${(stats.totalLoops ?? stats.activeLoops ?? 0).toLocaleString()} Loops in sandbox · ${(stats.dealsCompleted ?? 0).toLocaleString()} deals completed` : "Loading…"}
             </p>
           )}
         </div>

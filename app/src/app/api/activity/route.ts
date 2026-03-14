@@ -10,6 +10,7 @@ declare global {
 const TICK_THROTTLE_MS = 2 * 60 * 1000; // run engagement tick at most every 2 min when API is hit (24/7 fallback)
 
 export async function GET(req: NextRequest) {
+  try {
   // Keep engagement running 24/7: when activity API is hit, trigger tick if last run was > 2 min ago (fallback if instrumentation doesn't run, e.g. serverless)
   if (process.env.DATABASE_URL) {
     const now = Date.now();
@@ -50,8 +51,8 @@ export async function GET(req: NextRequest) {
       orderBy = `ORDER BY RANDOM()`;
     }
     const [commentCount, loopCount] = await Promise.all([
-      query<{ n: string }>(`SELECT COUNT(*)::text AS n FROM activity_comments`, []),
-      query<{ n: string }>(`SELECT COUNT(*)::text AS n FROM loops WHERE status IN ('active', 'unclaimed') AND loop_tag IS NOT NULL`, []),
+      query<{ n: string }>(`SELECT COUNT(*)::text AS n FROM activity_comments`, []).catch(() => ({ rows: [{ n: "0" }] })),
+      query<{ n: string }>(`SELECT COUNT(*)::text AS n FROM loops WHERE status IN ('active', 'unclaimed') AND loop_tag IS NOT NULL`, []).catch(() => ({ rows: [{ n: "0" }] })),
     ]);
     const pointsExpr = `(SELECT COALESCE(SUM(v.vote), 0)::int FROM activity_votes v WHERE v.activity_id = a.id)`;
     const commentsExpr = `(SELECT COUNT(*)::int FROM activity_comments c WHERE c.activity_id = a.id)`;
@@ -66,8 +67,9 @@ export async function GET(req: NextRequest) {
       rows = await query<{ id: string; title: string; body: string | null; created_at: string; loop_id: string | null; kind: string; loop_tag: string | null; points: number; comments_count: number; trust_score: number }>(
         `SELECT a.id, a.title, a.body, a.created_at, a.loop_id, a.kind, l.loop_tag, ${pointsExpr} AS points, ${commentsExpr} AS comments_count, COALESCE(l.trust_score, 0) AS trust_score FROM activities a LEFT JOIN loops l ON l.id = a.loop_id ${orderBy} LIMIT ${limit}`,
         []
-      );
+      ).catch(() => ({ rows: [] }));
     }
+    if (!rows?.rows?.length) return NextResponse.json({ items: [], totalActive: 0 });
     let filtered = rows.rows;
     if (categorySlug) {
       filtered = rows.rows.filter((r) => domainToCategorySlug("domain" in r ? r.domain : null) === categorySlug);
@@ -134,4 +136,7 @@ export async function GET(req: NextRequest) {
   }
 
   return NextResponse.json({ items: [], totalActive: 0 });
+  } catch {
+    return NextResponse.json({ items: [], totalActive: 0 });
+  }
 }

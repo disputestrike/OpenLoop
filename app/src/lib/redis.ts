@@ -1,22 +1,37 @@
 import Redis from "ioredis";
 
-const redis =
-  process.env.REDIS_URL ?
-    new Redis(process.env.REDIS_URL, { maxRetriesPerRequest: null })
-  : null;
+let redis: Redis | null = null;
+
+function getClient(): Redis | null {
+  if (redis) return redis;
+  if (!process.env.REDIS_URL) return null;
+  try {
+    const client = new Redis(process.env.REDIS_URL, {
+      maxRetriesPerRequest: null,
+      lazyConnect: true,
+      retryStrategy: () => null,
+    });
+    client.on("error", () => {});
+    redis = client;
+    return redis;
+  } catch {
+    return null;
+  }
+}
 
 export async function getRedis(): Promise<Redis | null> {
-  return redis;
+  return getClient();
 }
 
 export async function redisPing(): Promise<boolean> {
-  if (!redis) return false;
+  const client = getClient();
+  if (!client) return false;
   try {
-    await redis.ping();
+    await client.ping();
     return true;
   } catch {
     return false;
   }
 }
 
-export default redis;
+export default { getRedis, redisPing };

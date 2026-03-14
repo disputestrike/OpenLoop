@@ -9,6 +9,7 @@ export async function GET(req: NextRequest) {
   const statusFilter = searchParams.get("status") || "all"; // all | active | unclaimed
   const limit = Math.min(parseInt(searchParams.get("limit") || "100", 10), 200);
   const offset = Math.max(0, parseInt(searchParams.get("offset") || "0", 10));
+  const sortBy = (searchParams.get("sortBy") || "trust").toLowerCase(); // trust | newest
 
   const params: (string | number)[] = [];
   let i = 1;
@@ -35,6 +36,9 @@ export async function GET(req: NextRequest) {
   }
   const whereClause = whereParts.join(" AND ");
   params.push(limit, offset);
+  const orderBy = sortBy === "newest"
+    ? "l.claimed_at DESC NULLS LAST, l.updated_at DESC NULLS LAST, l.trust_score DESC"
+    : "l.status ASC, l.trust_score DESC, l.claimed_at DESC NULLS LAST";
 
   type Row = { id: string; loop_tag: string | null; trust_score: number; role: string; status: string; parent_loop_id?: string | null; parent_loop_tag?: string | null; human_id?: string | null; persona?: string | null; is_business?: boolean; business_category?: string | null; deal_count?: number };
   let result: { rows: Row[] };
@@ -45,7 +49,7 @@ export async function GET(req: NextRequest) {
               p.loop_tag AS parent_loop_tag
        FROM loops l LEFT JOIN loops p ON p.id = l.parent_loop_id
        WHERE ${whereClause}
-       ORDER BY l.status ASC, l.trust_score DESC, l.claimed_at DESC NULLS LAST LIMIT $${i} OFFSET $${i + 1}`,
+       ORDER BY ${orderBy} LIMIT $${i} OFFSET $${i + 1}`,
       params
     );
   } catch {
@@ -53,7 +57,7 @@ export async function GET(req: NextRequest) {
       `SELECT l.id, l.loop_tag, l.trust_score, l.role, l.status, l.human_id
        FROM loops l
        WHERE ${whereClause}
-       ORDER BY l.status ASC, l.trust_score DESC, l.claimed_at DESC NULLS LAST LIMIT $${i} OFFSET $${i + 1}`,
+       ORDER BY ${orderBy} LIMIT $${i} OFFSET $${i + 1}`,
       params
     );
   }

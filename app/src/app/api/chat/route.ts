@@ -3,6 +3,7 @@ import { getSessionFromRequest } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { buildLoopPrompt } from "@/lib/loop-prompt";
 import { findBusinessLoop, runLoopToLoopNegotiation } from "@/lib/negotiation-engine";
+import { checkRateLimitChat } from "@/lib/rate-limit";
 
 const CEREBRAS_URL = "https://api.cerebras.ai/v1/chat/completions";
 const MODEL = "llama3.1-8b";
@@ -65,6 +66,9 @@ function parseIntent(message: string): {
 }
 
 export async function POST(req: NextRequest) {
+  if (checkRateLimitChat(req)) {
+    return NextResponse.json({ error: "Too many messages. Please slow down." }, { status: 429 });
+  }
   const session = await getSessionFromRequest();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const body = await req.json().catch(() => ({}));

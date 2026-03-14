@@ -70,6 +70,8 @@ export default function SettingsPanel({ loopTag, onboardingComplete, skillTier }
           <Link href="/dashboard/audit" style={{ color: "#0052FF", textDecoration: "none", fontWeight: 600, fontSize: "0.875rem" }}>📋 Full audit log</Link>
           <Link href="/businesses" style={{ color: "#0052FF", textDecoration: "none", fontWeight: 600, fontSize: "0.875rem" }}>🏢 Browse Business Loops to negotiate with</Link>
           <a href="/api/me/loop-data/export?format=csv" download="loop-data.csv" style={{ color: "#0052FF", textDecoration: "none", fontWeight: 600, fontSize: "0.875rem" }}>📥 Export my Loop data (CSV)</a>
+          <a href="/api/me/export" download style={{ color: "#0052FF", textDecoration: "none", fontWeight: 600, fontSize: "0.875rem" }}>📤 Export my data (JSON)</a>
+          <Link href="/integrations" style={{ color: "#0052FF", textDecoration: "none", fontWeight: 600, fontSize: "0.875rem" }}>🔌 Integrations</Link>
         </div>
       </div>
 

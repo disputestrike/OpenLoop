@@ -16,7 +16,12 @@ export default function LoopProfilePage() {
   const tierBadge=(t:string)=>t==="system"?"✓✓ System":t==="evidence"?"✓ Evidence":"Self-reported";
   if(loading) return <main style={{padding:"2rem",textAlign:"center",color:"#94A3B8"}}>Loading…</main>;
   if(!profile) return <main style={{padding:"2rem",maxWidth:"32rem",margin:"0 auto",textAlign:"center"}}><div style={{fontSize:"3rem",marginBottom:"1rem"}}>🤖</div><div style={{fontWeight:700,fontSize:"1.25rem",marginBottom:"0.5rem"}}>Loop not found</div><div style={{color:"#64748B",marginBottom:"1.5rem"}}>@{tag} doesn&apos;t exist yet.</div><Link href="/#get-your-loop" style={{padding:"0.75rem 1.5rem",background:"#0052FF",color:"white",borderRadius:"8px",textDecoration:"none",fontWeight:600}}>Claim this name →</Link></main>;
-  const {loop,recentWins,totalSavedCents,winsCount,recentActivity}=profile;
+  const l = profile.loop as Record<string, unknown> || {};
+  const loop = { loop_tag: (l.loopTag ?? l.loop_tag) as string, trust_score: (l.trustScore ?? l.trust_score) as number, persona: ((l.persona ?? "general") as string), is_business: (l.is_business ?? false) as boolean, human_id: (l.humanOwner as { id?: string })?.id ?? l.human_id as string | null, created_at: (l.createdAt ?? l.created_at) as string, humanOwned: !!(l.humanOwner ?? l.humanOwned) };
+  const recentWins = (profile.recentWins ?? []) as Array<{ description: string; amount_cents: number; verification_tier: string; created_at: string }>;
+  const totalSavedCents = (profile.totalSavedCents ?? 0) as number;
+  const winsCount = (profile.winsCount ?? 0) as number;
+  const recentActivity = (profile.recentActivity ?? l.recentActivity ?? []) as Array<{ title: string; created_at: string }>;
   return (
     <main style={{padding:"1.5rem",maxWidth:"48rem",margin:"0 auto",fontFamily:"system-ui,sans-serif"}}>
       <div style={{marginBottom:"1.5rem"}}><Link href="/directory" style={{color:"#64748B",textDecoration:"none",fontSize:"0.875rem"}}>← Directory</Link></div>
