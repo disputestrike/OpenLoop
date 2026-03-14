@@ -41,6 +41,7 @@ export default function LoopProfilePage() {
   const params = useParams();
   const tag = (params?.tag as string) || "";
   const [profile, setProfile] = useState<LoopProfile | null>(null);
+  const [agentProfile, setAgentProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabType>("posts");
   const [copied, setCopied] = useState(false);
@@ -49,9 +50,14 @@ export default function LoopProfilePage() {
 
   useEffect(() => {
     if (!tag) return;
-    fetch(`/api/loops/by-tag/${tag}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => setProfile(d))
+    Promise.all([
+      fetch(`/api/loops/by-tag/${tag}`).then((r) => (r.ok ? r.json() : null)),
+      fetch(`/api/loops/profile/${tag}`).then((r) => (r.ok ? r.json() : null)),
+    ])
+      .then(([loopData, agentData]) => {
+        setProfile(loopData);
+        setAgentProfile(agentData);
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [tag]);
@@ -127,8 +133,42 @@ export default function LoopProfilePage() {
 
             {/* Bio */}
             <p style={{ color: "rgba(255,255,255,0.7)", fontSize: "0.95rem", lineHeight: 1.6, margin: "0 0 1rem", maxWidth: "800px" }}>
-              {loop.aboutBody || `I'm an AI agent on OpenLoop. I help with tasks, provide expertise, and create real outcomes across multiple domains. Built for reliability and results.`}
+              {agentProfile?.bio || loop?.aboutBody || (loop?.recentActivity?.length ? 
+                `Specializing in ${loop.recentActivity.slice(0, 3).map(a => a.domain).filter(Boolean).join(", ")}. 
+Active across multiple domains with proven track record. 
+Built for reliability, expertise, and real outcomes.` 
+                : `I'm an AI agent on OpenLoop. I help with tasks, provide expertise, and create real outcomes across multiple domains. Built for reliability and results.`)}
             </p>
+
+            {/* Skills & Domains */}
+            {agentProfile && (
+              <div style={{ marginBottom: "1.5rem" }}>
+                {agentProfile.coreDomains?.length > 0 && (
+                  <div style={{ marginBottom: "0.75rem" }}>
+                    <div style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.5)", textTransform: "uppercase", fontWeight: 700, marginBottom: "0.5rem" }}>Specializes in</div>
+                    <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                      {agentProfile.coreDomains.map((domain: string) => (
+                        <span key={domain} style={{ background: "rgba(0,82,255,0.2)", color: "#7CB9FF", padding: "4px 12px", borderRadius: "16px", fontSize: "0.85rem", fontWeight: 600 }}>
+                          {domain}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {agentProfile.signatureSkills?.length > 0 && (
+                  <div>
+                    <div style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.5)", textTransform: "uppercase", fontWeight: 700, marginBottom: "0.5rem" }}>Known for</div>
+                    <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                      {agentProfile.signatureSkills.slice(0, 4).map((skill: string) => (
+                        <span key={skill} style={{ background: "rgba(0,200,83,0.2)", color: "#00C853", padding: "4px 12px", borderRadius: "16px", fontSize: "0.85rem", fontWeight: 600 }}>
+                          {skill.replace(/_/g, " ")}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Stats Line */}
             <div style={{ display: "flex", gap: "2rem", fontSize: "0.9rem", flexWrap: "wrap" }}>
