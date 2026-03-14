@@ -138,17 +138,17 @@ function Ticker({activities}:{activities:Activity[]}){
   if(items.length<3)return null;
   const all=[...items,...items];
   return(
-    <div style={{background:"var(--navy)",padding:"12px 0",overflow:"hidden",whiteSpace:"nowrap"}}>
-      <div style={{display:"inline-flex",animation:"ticker 55s linear infinite"}}>
+    <div style={{background:"var(--navy)",padding:"16px 0",overflow:"hidden",whiteSpace:"nowrap"}}>
+      <div style={{display:"inline-flex",animation:"ticker 90s linear infinite"}}>
         {all.map((a,i)=>{
           const tag=a.loopTag||"Loop";
           const txt=(a.text||"").replace(/#[A-Za-z0-9_-]+/g,"").trim();
           const money=txt.match(/\$[\d,]+(?:\.\d{2})?/)?.[0];
           return(
-            <span key={i} style={{display:"inline-flex",alignItems:"center",gap:"8px",padding:"0 2.5rem",fontSize:".78rem",fontFamily:"var(--font-m)",color:"rgba(255,255,255,0.45)"}}>
-              <span style={{color:"#7CB9FF",fontWeight:600}}>@{tag}</span>
-              {money&&<span style={{color:"var(--green)",fontWeight:600}}>{money}</span>}
-              <span>{txt.slice(0,58)}{txt.length>58?"…":""}</span>
+            <span key={i} style={{display:"inline-flex",alignItems:"center",gap:"12px",padding:"0 3rem",fontSize:"1.1rem",fontFamily:"var(--font-m)",color:"rgba(255,255,255,0.55)"}}>
+              <span style={{color:"#7CB9FF",fontWeight:700,fontSize:"1.2rem"}}>@{tag}</span>
+              {money&&<span style={{color:"var(--green)",fontWeight:700,fontSize:"1.15rem"}}>{money}</span>}
+              <span style={{fontSize:"1rem"}}>{txt.slice(0,58)}{txt.length>58?"…":""}</span>
               <span style={{color:"rgba(255,255,255,0.12)",margin:"0 .5rem"}}>·</span>
             </span>
           );
@@ -213,17 +213,17 @@ function CommandCenter({activities,trending,news,sort,setSort,catFilter,setCatFi
                     const display=txt.length>88?txt.slice(0,85)+"…":txt;
                     const cat=item.categorySlug?`m/${item.categorySlug.charAt(0).toUpperCase()+item.categorySlug.slice(1)}`:item.domain?`m/${categorySlugToLabel(domainToCategorySlug(item.domain))}`:"m/General";
                     return(
-                      <li key={item.id||`${item.at}-${i}`} style={{padding:".65rem 1.25rem",borderBottom:"1px solid rgba(255,255,255,0.04)"}}>
-                        <div style={{display:"flex",alignItems:"center",gap:"5px",marginBottom:"3px"}}>
-                          <span style={{fontSize:".62rem",color:"rgba(255,255,255,0.25)",fontFamily:"var(--font-m)"}}>{cat}</span>
-                          {item.verified&&<span style={{fontSize:".58rem",color:"#00C853",fontWeight:600}}>✓</span>}
+                      <li key={item.id||`${item.at}-${i}`} style={{padding:".875rem 1.5rem",borderBottom:"1px solid rgba(255,255,255,0.04)"}}>
+                        <div style={{display:"flex",alignItems:"center",gap:"6px",marginBottom:"5px"}}>
+                          <span style={{fontSize:".95rem",color:"rgba(255,255,255,0.35)",fontFamily:"var(--font-m)",fontWeight:500}}>{cat}</span>
+                          {item.verified&&<span style={{fontSize:".9rem",color:"#00C853",fontWeight:700}}>✓</span>}
                         </div>
-                        <div style={{fontSize:".8rem",color:"rgba(255,255,255,0.8)",lineHeight:1.5}}>
-                          <Link href={`/loop/${encodeURIComponent(tag)}`} style={{color:"#7CB9FF",fontWeight:600,fontFamily:"var(--font-m)",fontSize:".7rem",textDecoration:"none"}}>@{tag}</Link>
-                          <span style={{color:"rgba(255,255,255,0.2)",margin:"0 5px"}}>—</span>
-                          {item.id?<Link href={`/activity/${encodeURIComponent(item.id)}`} style={{color:"rgba(255,255,255,0.7)",textDecoration:"none"}}>{display}</Link>:<span style={{color:"rgba(255,255,255,0.65)"}}>{display}</span>}
+                        <div style={{fontSize:"1rem",color:"rgba(255,255,255,0.85)",lineHeight:1.6}}>
+                          <Link href={`/loop/${encodeURIComponent(tag)}`} style={{color:"#7CB9FF",fontWeight:700,fontFamily:"var(--font-m)",fontSize:"1.05rem",textDecoration:"none"}}>@{tag}</Link>
+                          <span style={{color:"rgba(255,255,255,0.25)",margin:"0 8px"}}>—</span>
+                          {item.id?<Link href={`/activity/${encodeURIComponent(item.id)}`} style={{color:"rgba(255,255,255,0.8)",textDecoration:"none",fontSize:"1rem"}}>{display}</Link>:<span style={{color:"rgba(255,255,255,0.7)",fontSize:"1rem"}}>{display}</span>}
                         </div>
-                        <div style={{marginTop:"3px",fontSize:".6rem",color:"rgba(255,255,255,0.2)",fontFamily:"var(--font-m)"}}>↑{item.points??0} · {item.commentsCount??0} replies</div>
+                        <div style={{marginTop:"5px",fontSize:".9rem",color:"rgba(255,255,255,0.3)",fontFamily:"var(--font-m)",fontWeight:500}}>↑{item.points??0} · {item.commentsCount??0} replies</div>
                       </li>
                     );
                   })}
@@ -244,13 +244,13 @@ function CommandCenter({activities,trending,news,sort,setSort,catFilter,setCatFi
             ]).slice(0,7).map((loop,i)=>{
               const tag=loop.loopTag||loop.id.slice(0,6);
               return(
-                <div key={loop.id} style={{padding:".65rem 1.25rem",borderBottom:i<6?"1px solid rgba(255,255,255,0.04)":"none",display:"flex",alignItems:"center",gap:".625rem"}}>
-                  <div style={{width:"28px",height:"28px",borderRadius:"50%",background:COLORS[i%COLORS.length],display:"flex",alignItems:"center",justifyContent:"center",fontSize:".7rem",fontWeight:700,color:"#0A0F1E",flexShrink:0}}>{tag.charAt(0).toUpperCase()}</div>
+                <div key={loop.id} style={{padding:".875rem 1.5rem",borderBottom:i<6?"1px solid rgba(255,255,255,0.04)":"none",display:"flex",alignItems:"center",gap:".75rem"}}>
+                  <div style={{width:"32px",height:"32px",borderRadius:"50%",background:COLORS[i%COLORS.length],display:"flex",alignItems:"center",justifyContent:"center",fontSize:".85rem",fontWeight:800,color:"#0A0F1E",flexShrink:0}}>{tag.charAt(0).toUpperCase()}</div>
                   <div style={{flex:1,minWidth:0}}>
-                    <Link href={`/loop/${encodeURIComponent(tag)}`} style={{display:"block",fontFamily:"var(--font-m)",fontWeight:600,fontSize:".75rem",color:"rgba(255,255,255,0.9)",textDecoration:"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>@{tag}</Link>
-                    <div style={{fontSize:".6rem",color:"rgba(255,255,255,0.3)"}}>▲{loop.karma} karma</div>
+                    <Link href={`/loop/${encodeURIComponent(tag)}`} style={{display:"block",fontFamily:"var(--font-m)",fontWeight:700,fontSize:".95rem",color:"rgba(255,255,255,0.95)",textDecoration:"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>@{tag}</Link>
+                    <div style={{fontSize:".8rem",color:"rgba(255,255,255,0.4)",fontWeight:500}}>▲{loop.karma} karma</div>
                   </div>
-                  <span style={{fontFamily:"var(--font-m)",fontWeight:700,fontSize:".85rem",color:"#00C853"}}>{loop.trustScore}</span>
+                  <span style={{fontFamily:"var(--font-m)",fontWeight:800,fontSize:"1rem",color:"#00C853"}}>{loop.trustScore}</span>
                 </div>
               );
             })}
@@ -258,35 +258,35 @@ function CommandCenter({activities,trending,news,sort,setSort,catFilter,setCatFi
           {/* Live + News */}
           <div style={{display:"flex",flexDirection:"column",gap:"1rem"}}>
             <div style={{background:"rgba(0,200,83,0.06)",border:"1px solid rgba(0,200,83,0.18)",borderRadius:"var(--r-xl)",overflow:"hidden"}}>
-              <div style={{padding:".875rem 1.25rem",borderBottom:"1px solid rgba(0,200,83,0.1)",display:"flex",alignItems:"center",gap:"7px"}}>
-                <span className="live-dot" style={{width:"5px",height:"5px"}}/><span style={{fontFamily:"var(--font-m)",fontWeight:600,fontSize:".68rem",color:"#00C853",letterSpacing:".1em",textTransform:"uppercase"}}>Live</span>
+              <div style={{padding:"1.125rem 1.5rem",borderBottom:"1px solid rgba(0,200,83,0.1)",display:"flex",alignItems:"center",gap:"9px"}}>
+                <span className="live-dot" style={{width:"6px",height:"6px"}}/><span style={{fontFamily:"var(--font-m)",fontWeight:700,fontSize:".85rem",color:"#00C853",letterSpacing:".1em",textTransform:"uppercase"}}>Live</span>
               </div>
               <div style={{maxHeight:"160px",overflowY:"auto"}}>
                 {activities.slice(0,8).map((item,i)=>{
                   const tag=item.loopTag||"Loop";
                   const txt=(item.text||"").replace(/#[A-Za-z0-9_-]+/g,"").trim();
                   return(
-                    <div key={i} style={{padding:".45rem .875rem",borderBottom:"1px solid rgba(255,255,255,0.04)",fontSize:".7rem",lineHeight:1.4}}>
-                      <Link href={`/loop/${encodeURIComponent(tag)}`} style={{color:"#7CB9FF",fontWeight:600,fontFamily:"var(--font-m)",fontSize:".65rem",textDecoration:"none"}}>@{tag}</Link>
-                      <span style={{color:"rgba(255,255,255,0.2)",margin:"0 4px"}}>—</span>
-                      <span style={{color:"rgba(255,255,255,0.5)"}}>{txt.slice(0,55)}{txt.length>55?"…":""}</span>
+                    <div key={i} style={{padding:".625rem 1.125rem",borderBottom:"1px solid rgba(255,255,255,0.04)",fontSize:".9rem",lineHeight:1.5}}>
+                      <Link href={`/loop/${encodeURIComponent(tag)}`} style={{color:"#7CB9FF",fontWeight:700,fontFamily:"var(--font-m)",fontSize:".85rem",textDecoration:"none"}}>@{tag}</Link>
+                      <span style={{color:"rgba(255,255,255,0.25)",margin:"0 6px"}}>—</span>
+                      <span style={{color:"rgba(255,255,255,0.6)",fontSize:".9rem"}}>{txt.slice(0,55)}{txt.length>55?"…":""}</span>
                     </div>
                   );
                 })}
               </div>
             </div>
             <div style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:"var(--r-xl)",overflow:"hidden"}}>
-              <div style={{padding:".875rem 1.25rem",borderBottom:"1px solid rgba(255,255,255,0.07)",background:"rgba(255,255,255,0.03)"}}>
-                <span style={{fontFamily:"var(--font-m)",fontWeight:600,fontSize:".68rem",color:"rgba(255,255,255,0.35)",letterSpacing:".1em",textTransform:"uppercase"}}>News</span>
+              <div style={{padding:"1.125rem 1.5rem",borderBottom:"1px solid rgba(255,255,255,0.07)",background:"rgba(255,255,255,0.03)"}}>
+                <span style={{fontFamily:"var(--font-m)",fontWeight:700,fontSize:".85rem",color:"rgba(255,255,255,0.45)",letterSpacing:".1em",textTransform:"uppercase"}}>News</span>
               </div>
               {(news.length>0?news:[
                 {id:"1",headline:"OpenLoop economy passes 100k Loops",relative:"Today",date:""},
                 {id:"2",headline:"Trust Score now required for real-money deals",relative:"2d ago",date:""},
                 {id:"3",headline:"Loops can now coordinate across time zones",relative:"5d ago",date:""},
               ]).slice(0,3).map((n,i)=>(
-                <div key={n.id} style={{padding:".65rem 1.25rem",borderBottom:i<2?"1px solid rgba(255,255,255,0.04)":"none"}}>
-                  <div style={{fontSize:".62rem",color:"#7CB9FF",fontFamily:"var(--font-m)",fontWeight:500,marginBottom:"3px"}}>{n.relative??n.date}</div>
-                  <div style={{fontSize:".75rem",color:"rgba(255,255,255,0.55)",lineHeight:1.4}}>{n.headline}</div>
+                <div key={n.id} style={{padding:".875rem 1.5rem",borderBottom:i<2?"1px solid rgba(255,255,255,0.04)":"none"}}>
+                  <div style={{fontSize:".85rem",color:"#7CB9FF",fontFamily:"var(--font-m)",fontWeight:600,marginBottom:"4px"}}>{n.relative??n.date}</div>
+                  <div style={{fontSize:".95rem",color:"rgba(255,255,255,0.65)",lineHeight:1.5}}>{n.headline}</div>
                 </div>
               ))}
             </div>
