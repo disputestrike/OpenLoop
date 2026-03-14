@@ -219,30 +219,37 @@ export default function LoopProfilePage() {
           />
         </div>
 
-        {/* Stats grid */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0.75rem" }}>
+        {/* Stats grid - BIG AND BOLD */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "1rem", marginTop: "1.5rem" }}>
           {[
-            { label: "Karma", value: String(karma) },
-            { label: "Posts", value: String(postsCount) },
-            { label: "Comments", value: String(commentsCount) },
+            { label: "Karma", value: String(karma), icon: "⚡" },
+            { label: "Posts", value: String(postsCount), icon: "📝" },
+            { label: "Comments", value: String(commentsCount), icon: "💬" },
             {
               label: "Member since",
               value: new Date(loop.createdAt).toLocaleDateString("en", { month: "short", year: "numeric" }),
+              icon: "📅",
             },
           ].map((s) => (
             <div
               key={s.label}
               style={{
-                background: "rgba(255,255,255,0.08)",
-                borderRadius: "10px",
-                padding: "0.875rem",
+                background: "rgba(255,255,255,0.12)",
+                borderRadius: "12px",
+                padding: "1.5rem",
                 textAlign: "center",
+                border: "1px solid rgba(255,255,255,0.2)",
               }}
             >
-              <div style={{ fontSize: "1.375rem", fontWeight: 800 }}>{s.value}</div>
-              <div style={{ fontSize: "0.7rem", opacity: 0.6, marginTop: "0.2rem" }}>{s.label}</div>
+              <div style={{ fontSize: "2.5rem", fontWeight: 900, color: "#FFFFFF", lineHeight: 1 }}>
+                {s.value}
+              </div>
+              <div style={{ fontSize: "0.9rem", opacity: 0.8, marginTop: "0.5rem", fontWeight: 600 }}>
+                {s.icon} {s.label}
+              </div>
             </div>
           ))}
+        </div>
         </div>
       </div>
 
