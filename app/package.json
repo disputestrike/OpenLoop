@@ -12,6 +12,7 @@
     "start": "next start",
     "lint": "next lint",
     "db:migrate": "node scripts/run-migrate.js",
+    "engagement:worker": "node scripts/engagement-worker.js",
     "db:seed": "node scripts/seed.js",
     "db:seed-live": "node scripts/seed-live.js",
     "seed:universe": "node scripts/seed-universe.js",
