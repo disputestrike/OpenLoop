@@ -162,14 +162,32 @@ export async function POST(req: NextRequest) {
   const systemPrompt = buildLoopPrompt({ persona: loop?.persona, loopTag: loop?.loop_tag, trustScore: loop?.trust_score, skillTier: loop?.skill_tier, knowledgeBase: kb, recentMemory: memory, channel: "web" })
     + `\n\nNEGOTIATION AWARENESS: When user mentions bills or businesses, check if that business has an OpenLoop Loop. If yes, negotiate Loop-to-Loop. If no, generate a script. You can also search for any Loop by saying what business they want to deal with.`;
 
-  const apiKey = process.env.CEREBRAS_API_KEY;
+  // Rotate across all 5 Cerebras keys — round-robin with 429 fallback
+  const _allKeys = [
+    process.env.CEREBRAS_API_KEY,
+    process.env.CEREBRAS_API_KEY_2,
+    process.env.CEREBRAS_API_KEY_3,
+    process.env.CEREBRAS_API_KEY_4,
+    process.env.CEREBRAS_API_KEY_5,
+  ].filter((k): k is string => !!k && k.trim().length > 0);
+
   let assistantContent: string;
-  if (apiKey) {
-    const res = await fetch(CEREBRAS_URL, { method:"POST", headers:{"Content-Type":"application/json",Authorization:`Bearer ${apiKey}`}, body: JSON.stringify({ model:MODEL, messages:[{role:"system",content:systemPrompt},...history.map(r=>({role:r.role,content:r.content})),{role:"user",content:userMessage}], stream:false, max_tokens:1024, temperature:0.7 }) });
-    if (!res.ok) { assistantContent = "Temporary connection issue. Try again in a moment."; }
-    else { const data = await res.json() as {choices?:Array<{message?:{content?:string}}>}; assistantContent = data.choices?.[0]?.message?.content?.trim()??"Can you rephrase that?"; }
+  if (_allKeys.length) {
+    let chatRes: Response | null = null;
+    for (const apiKey of _allKeys) {
+      try {
+        chatRes = await fetch(CEREBRAS_URL, { method:"POST", headers:{"Content-Type":"application/json",Authorization:`Bearer ${apiKey}`}, body: JSON.stringify({ model:MODEL, messages:[{role:"system",content:systemPrompt},...history.map(r=>({role:r.role,content:r.content})),{role:"user",content:userMessage}], stream:false, max_tokens:1024, temperature:0.7 }) });
+        if (chatRes.status !== 429) break; // success or non-rate-limit error — stop rotating
+      } catch { chatRes = null; }
+    }
+    if (chatRes && chatRes.ok) {
+      const data = await chatRes.json() as {choices?:Array<{message?:{content?:string}}>};
+      assistantContent = data.choices?.[0]?.message?.content?.trim()??"Can you rephrase that?";
+    } else {
+      assistantContent = "Temporary connection issue. Try again in a moment.";
+    }
   } else {
-    assistantContent = `I'm ${loop?.loop_tag||"your Loop"}. Add CEREBRAS_API_KEY to Railway to enable AI responses.`;
+    assistantContent = `I'm ${loop?.loop_tag||"your Loop"}. Add CEREBRAS_API_KEY to Railway Variables to enable AI responses.`;
   }
 
   const logRes = await query<{id:string}>("INSERT INTO llm_interactions (loop_id, kind, prompt, response, source) VALUES ($1, 'chat', $2, $3, 'openloop_app') RETURNING id", [loopId, userMessage, assistantContent.slice(0,8000)]).catch(()=>({rows:[]}));

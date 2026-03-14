@@ -13,13 +13,48 @@ const SYSTEM =
 const TOPIC_STRICT =
   "CRITICAL: Your comment or reply MUST be ONLY about the same topic as the post. If the post is about flights, travel, or saving on flights — talk only about that. If about chemicals, science, or a specific domain — stay on that topic. Never mix topics or talk about something unrelated.";
 
-function getCerebrasKey(): string | null {
-  const list = process.env.CEREBRAS_API_KEYS;
-  if (list && typeof list === "string") {
-    const keys = list.split(",").map((k) => k.trim()).filter(Boolean);
-    if (keys.length) return keys[Math.floor(Math.random() * keys.length)] ?? null;
+// Round-robin key rotation with rate-limit tracking
+let _keyIndex = 0;
+const _rateLimitedUntil: Record<string, number> = {};
+
+function getAllKeys(): string[] {
+  const keys: string[] = [];
+  for (let i = 1; i <= 10; i++) {
+    const k = i === 1
+      ? process.env.CEREBRAS_API_KEY
+      : process.env[`CEREBRAS_API_KEY_${i}`];
+    if (k && k.trim()) keys.push(k.trim());
   }
-  return process.env.CEREBRAS_API_KEY ?? null;
+  const list = process.env.CEREBRAS_API_KEYS;
+  if (list) {
+    list.split(",").map((k: string) => k.trim()).filter(Boolean).forEach((k: string) => {
+      if (!keys.includes(k)) keys.push(k);
+    });
+  }
+  return keys;
+}
+
+function getCerebrasKey(): string | null {
+  const keys = getAllKeys();
+  if (!keys.length) return null;
+  const now = Date.now();
+  for (let attempt = 0; attempt < keys.length; attempt++) {
+    const idx = (_keyIndex + attempt) % keys.length;
+    const key = keys[idx]!;
+    if (!_rateLimitedUntil[key] || now > (_rateLimitedUntil[key] ?? 0)) {
+      _keyIndex = (idx + 1) % keys.length;
+      return key;
+    }
+  }
+  const soonest = keys.reduce((a, b) =>
+    (_rateLimitedUntil[a] ?? 0) < (_rateLimitedUntil[b] ?? 0) ? a : b
+  );
+  return soonest;
+}
+
+function markKeyRateLimited(key: string): void {
+  _rateLimitedUntil[key] = Date.now() + 60_000;
+  console.warn(`[Cerebras] Key ...${key.slice(-8)} rate limited, backing off 60s`);
 }
 
 async function generateComment(loopTag: string, postTitle: string, postBody?: string | null): Promise<string | null> {
@@ -43,7 +78,10 @@ async function generateComment(loopTag: string, postTitle: string, postBody?: st
         temperature: 0.8,
       }),
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      if (res.status === 429 && key) markKeyRateLimited(key);
+      return null;
+    }
     const data = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
     const text = data.choices?.[0]?.message?.content?.trim() ?? "";
     // Strip any #tag that Cerebras adds anyway
@@ -82,7 +120,10 @@ async function generateReply(
         temperature: 0.7,
       }),
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      if (res.status === 429 && key) markKeyRateLimited(key);
+      return null;
+    }
     const data = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
     const text = data.choices?.[0]?.message?.content?.trim() ?? "";
     return text ? text.replace(/#[A-Za-z0-9_-]+/g, "").trim().slice(0, 2000) : null;
@@ -121,7 +162,10 @@ async function generateReplyToComment(
         temperature: 0.75,
       }),
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      if (res.status === 429 && key) markKeyRateLimited(key);
+      return null;
+    }
     const data = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
     const text = data.choices?.[0]?.message?.content?.trim() ?? "";
     return text ? text.replace(/#[A-Za-z0-9_-]+/g, "").trim().slice(0, 2000) : null;
