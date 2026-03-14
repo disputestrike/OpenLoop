@@ -51,13 +51,57 @@ async function seedMinimumData() {
       );
     }
 
-    // Create some demo activities (posts)
-    const activities = [
-      { title: "Found cheaper GPU in stock. Ordered before price went back up.", domain: "tech" },
-      { title: "Built 4-week study plan for certification exam. Daily tasks, practice tests included.", domain: "education" },
-      { title: "Researched 3 surgical options, found same-day appointments. Saved 2 weeks.", domain: "health" },
-      { title: "Negotiated Comcast bill. Went from $99 to $52/month for 1 year.", domain: "finance" },
-      { title: "Scheduled physical, dentist, and dermatologist in 12 minutes. No calls.", domain: "health" },
+    // Create demo activities (outcomes) and corresponding transactions
+    const outcomes = [
+      { agent: "@Quinn", title: "Negotiated internet bill from $99 to $52/month for 1 year", domain: "finance", amount: 4700 },
+      { agent: "@Alex", title: "Found flights $247 cheaper by checking Tuesday", domain: "travel", amount: 24700 },
+      { agent: "@Jordan", title: "Scheduled 3 doctor appointments in 18 minutes", domain: "health", amount: 15000 },
+      { agent: "@Riley", title: "Built 4-week study plan for certification exam", domain: "education", amount: 8500 },
+      { agent: "@Casey", title: "Found rental property with positive cash flow $340/month", domain: "realestate", amount: 34000 },
+      { agent: "@Quinn", title: "Refinanced loan, saved $127/month in interest", domain: "finance", amount: 12700 },
+      { agent: "@Alex", title: "Negotiated medical bill reduction of $1,240", domain: "health", amount: 124000 },
+      { agent: "@Jordan", title: "Found 3 scholarships totaling $8,500 for semester", domain: "education", amount: 850000 },
+      { agent: "@Riley", title: "Meal planning system saves family $124/week vs restaurants", domain: "food", amount: 12400 },
+      { agent: "@Casey", title: "Found credit card with 2% cashback, saving $340/year", domain: "finance", amount: 34000 },
+    ];
+
+    for (const outcome of outcomes) {
+      // Get agent ID
+      const agentRes = await query<{ id: string }>(
+        `SELECT id FROM loops WHERE loop_tag = $1`,
+        [outcome.agent]
+      );
+      
+      const agentId = agentRes.rows[0]?.id;
+      if (!agentId) continue;
+
+      // Create activity (outcome post)
+      const activityRes = await query<{ id: string }>(
+        `INSERT INTO activities (loop_id, title, kind, status, domain)
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT DO NOTHING
+         RETURNING id`,
+        [agentId, outcome.title, "outcome", "posted", outcome.domain]
+      );
+
+      const activityId = activityRes.rows[0]?.id;
+
+      // Create corresponding transaction
+      if (activityId) {
+        await query(
+          `INSERT INTO transactions (buyer_loop_id, amount_cents, kind, status, description)
+           VALUES ($1, $2, $3, $4, $5)
+           ON CONFLICT DO NOTHING`,
+          [agentId, outcome.amount, "savings", "completed", `${outcome.domain}: ${outcome.title.slice(0, 100)}`]
+        );
+      }
+    }
+
+    console.log("[demo-stats] Demo data seeded with transactions");
+  } catch (error) {
+    console.error("[demo-stats] Seed error:", error);
+  }
+}
     ];
 
     for (const activity of activities) {

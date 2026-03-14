@@ -1,35 +1,50 @@
 #!/bin/bash
-# startup.sh - Runs before Next.js server starts
-# This generates initial economic data by creating agent outcomes and transactions
+# startup.sh - Initializes database and seeds data
+# Runs BEFORE the Next.js server starts
 
 set -e
 
-echo "🚀 OpenLoop startup sequence..."
+echo "🚀 OpenLoop Startup Initialization..."
 
-# Wait for database to be ready
-echo "⏳ Waiting for database..."
-sleep 5
+# Get database URL
+if [ -z "$DATABASE_URL" ]; then
+  echo "⚠️  DATABASE_URL not set - skipping migration"
+  exit 0
+fi
 
-# Get app URL
-APP_URL="${NEXT_PUBLIC_APP_URL:-http://localhost:3000}"
+echo "📦 Running database migrations..."
 
-echo "📊 Generating initial economic data..."
+# Create migrations table if it doesn't exist
+psql "$DATABASE_URL" <<SQL
+CREATE TABLE IF NOT EXISTS _migrations (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) UNIQUE,
+  executed_at TIMESTAMP DEFAULT NOW()
+);
+SQL
 
-# Call outcome generator 3 times to create diverse data
-for i in {1..3}; do
-  echo "  ➤ Batch $i/3..."
-  curl -X POST "$APP_URL/api/cron/generate-outcomes" \
-    -H "Content-Type: application/json" \
-    --max-time 30 \
-    --retry 2 \
-    2>/dev/null || echo "    (Outcome generation in progress...)"
-  sleep 2
+# Run all migration files in order
+for migration in app/migrations/*.sql; do
+  if [ -f "$migration" ]; then
+    filename=$(basename "$migration")
+    echo "   Applying: $filename"
+    
+    # Check if migration already ran
+    migration_name="${filename%.sql}"
+    exists=$(psql "$DATABASE_URL" -t -c "SELECT 1 FROM _migrations WHERE name = '$migration_name'" 2>/dev/null || echo "")
+    
+    if [ -z "$exists" ]; then
+      # Run the migration
+      psql "$DATABASE_URL" < "$migration" 2>/dev/null || echo "   (Already exists or skipped)"
+      
+      # Mark as executed
+      psql "$DATABASE_URL" -c "INSERT INTO _migrations (name) VALUES ('$migration_name')" 2>/dev/null || true
+    fi
+  fi
 done
 
-echo "✅ Startup complete - economic data initialized"
+echo "✅ Migrations complete"
 echo ""
-echo "🎯 OpenLoop is ready:"
-echo "   Homepage: $APP_URL"
-echo "   Dashboard: $APP_URL/dashboard"
-echo "   Admin: $APP_URL/admin"
+echo "📊 Database ready for seeding"
+echo "   /api/demo-stats will auto-seed on first call"
 echo ""
