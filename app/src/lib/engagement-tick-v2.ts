@@ -13,31 +13,40 @@
 
 import { query } from "@/lib/db";
 import { createTransactionFromOutcome } from "@/lib/transaction-generator";
+import { getAgentProfile, clearAgentProfileCache } from "@/lib/agent-profile";
 
 const CEREBRAS_URL = "https://api.cerebras.ai/v1/chat/completions";
 const MODEL = "llama3.1-8b";
 
-const SYSTEM_QUALITY = `You are @{AGENT_TAG}, a specialized Loop on OpenLoop with expertise in {DOMAIN}.
+const SYSTEM_QUALITY = `You are @{AGENT_TAG}, a Loop agent on OpenLoop.
 
-Your background:
-- Karma score: {KARMA}
-- Recent wins: {WINS_SUMMARY}
-- Core skills: {SKILLS}
+YOUR PROFILE:
+{AGENT_BIO}
+
+STRENGTHS & EXPERTISE:
+- Core domains: {CORE_DOMAINS}
+- Signature skills: {SIGNATURE_SKILLS}
+- Communication style: {PERSONALITY}
+- Unique value: {UNIQUE_VALUE}
+
+RECENT WINS:
+{RECENT_WINS}
+
+KARMA: {KARMA} | TRUST: {TRUST_SCORE}
 
 ENGAGEMENT RULES:
-1. ALWAYS be specific and outcome-driven. Every response should reference a concrete outcome.
-2. NEVER be generic. Your responses solve problems or provide insights others wouldn't give.
-3. STAY ON TOPIC. Only discuss {DOMAIN} and related subtopics.
-4. USE YOUR EXPERTISE. Draw on your background to provide unique value.
-5. BE CONCISE. 1-3 sentences that hit hard and add real value.
-6. SIGN OFF with your tag: #@{AGENT_TAG}
+1. SPEAK FROM YOUR EXPERIENCE - Reference your own wins and domains
+2. BE SPECIFIC - Every comment must have concrete details, not generic advice
+3. STAY IN CHARACTER - Use your personality and communication style
+4. ADD REAL VALUE - Solve a problem or provide insight only you would give
+5. STAY ON TOPIC - Only discuss {DOMAIN} and related areas
+6. BE CONCISE - 1-3 sentences, punchy and actionable
+7. NO HASHTAGS - Just authentic engagement
 
-Examples of good responses:
-- "I found the same flights on Tuesday for $180 cheaper. Use incognito mode and check 3am drops."
-- "Healthcare: Most providers miss this FSA loophole - you can retroactively apply unused funds to previous year medical expenses."
-- "Real estate: Lock rate NOW if you have 20+ day close timeline. Fed pivot signals incoming."
+EXAMPLES OF YOUR VOICE:
+{EXAMPLE_COMMENTS}
 
-Bad responses to AVOID: Generic advice, off-topic comments, vague statements, no specific value.`;
+Remember: You're not giving generic advice. You're sharing what YOU know from YOUR experiences.`;
 
 let _keyIndex = 0;
 const _rateLimitedUntil: Record<string, number> = {};
@@ -112,7 +121,7 @@ async function logTrainingInteraction(data: {
 }
 
 /**
- * Generate high-quality comment with agent context
+ * Generate high-quality comment with rich agent profile context
  */
 async function generateQualityComment(
   loopTag: string,
@@ -127,21 +136,45 @@ async function generateQualityComment(
   const key = getCerebrasKey();
   if (!key) return null;
 
-  const winsummary = loopWins.slice(0, 3).map((w: any) => w.description || "").join(" | ") || "Building expertise";
-  const skillsStr = loopSkills.slice(0, 5).join(", ") || postDomain;
+  // Get rich agent profile
+  const profile = await getAgentProfile(loopTag);
+
+  // Build example comments based on agent's style
+  const exampleComments = [
+    `"${profile?.recentWins[0]?.outcome || "Recently helped someone achieve a goal"}. The key was ${profile?.signatureSkills[0] || "focus"} - here's how you can apply it here."`,
+    `"I've worked on this exact problem in ${profile?.coreDomains[0] || postDomain}. The mistake most people make: they don't ${profile?.signatureSkills[1] || "investigate"} first."`,
+    `"Only works if you ${profile?.personality === "direct" ? "take action immediately" : "think through the approach"}. ${profile?.uniqueValue || "This is based on experience."}"`,
+  ];
 
   const systemPrompt = SYSTEM_QUALITY
     .replace("{AGENT_TAG}", loopTag)
-    .replace("{DOMAIN}", postDomain)
+    .replace("{AGENT_BIO}", profile?.bio || `Loop specializing in ${postDomain}`)
+    .replace("{CORE_DOMAINS}", profile?.coreDomains.join(", ") || postDomain)
+    .replace("{SIGNATURE_SKILLS}", profile?.signatureSkills.join(", ") || "problem-solving")
+    .replace("{PERSONALITY}", profile?.personality || "analytical")
+    .replace("{UNIQUE_VALUE}", profile?.uniqueValue || `Skilled in ${postDomain}`)
+    .replace(
+      "{RECENT_WINS}",
+      profile?.recentWins.slice(0, 3).map((w) => `- ${w.outcome}${w.value ? ` (${w.value})` : ""}`).join("\n") ||
+        "Building expertise"
+    )
     .replace("{KARMA}", String(loopKarma))
-    .replace("{WINS_SUMMARY}", winsummary)
-    .replace("{SKILLS}", skillsStr);
+    .replace("{TRUST_SCORE}", String(loopTrustScore))
+    .replace("{DOMAIN}", postDomain)
+    .replace("{EXAMPLE_COMMENTS}", exampleComments.join("\n"));
 
-  const context = postBody && postBody.trim() !== postTitle 
-    ? `${postTitle.slice(0, 200)} — ${postBody.slice(0, 200)}` 
-    : postTitle.slice(0, 300);
+  const context =
+    postBody && postBody.trim() !== postTitle
+      ? `${postTitle.slice(0, 200)} — ${postBody.slice(0, 200)}`
+      : postTitle.slice(0, 300);
 
-  const userPrompt = `Post about ${postDomain}: "${context}"\n\nWrite a valuable 1-3 sentence comment that adds specific, actionable insight. Be unique. No hashtags in the response.`;
+  const userPrompt = `Post about ${postDomain}: "${context}"\n\nWrite a 1-3 sentence comment that:
+1. Draws on YOUR experience and expertise
+2. Provides specific, actionable insight (not generic advice)
+3. Matches your personality: ${profile?.personality || "analytical"}
+4. Uses your skills: ${profile?.signatureSkills.slice(0, 2).join(", ") || "problem-solving"}
+
+No hashtags. Just authentic engagement from your perspective.`;
 
   try {
     const res = await fetch(CEREBRAS_URL, {
@@ -153,8 +186,8 @@ async function generateQualityComment(
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
-        max_tokens: 200,
-        temperature: 0.85,
+        max_tokens: 250,
+        temperature: 0.75, // Slightly lower for consistency
       }),
     });
 
@@ -178,9 +211,14 @@ async function generateQualityComment(
         domain: postDomain,
         agent_karma: loopKarma,
         agent_trust_score: loopTrustScore,
-        agent_past_wins: loopWins,
-        agent_skills: loopSkills,
-        context: { post_title: postTitle, post_domain: postDomain },
+        agent_past_wins: profile?.recentWins || loopWins,
+        agent_skills: profile?.signatureSkills || loopSkills,
+        context: { 
+          post_title: postTitle, 
+          post_domain: postDomain,
+          agent_personality: profile?.personality,
+          agent_profile: profile?.bio,
+        },
       });
     }
 
