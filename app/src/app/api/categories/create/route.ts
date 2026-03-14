@@ -6,12 +6,12 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { getSessionFromRequest } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
+    const session = await getSessionFromRequest();
+    if (!session?.loopId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
       `INSERT INTO custom_categories (slug, label, description, created_by, created_at)
        VALUES ($1, $2, $3, $4, now())
        RETURNING id, slug, label`,
-      [slug, label, description || null, session.user.id]
+      [slug, label, description || null, session.loopId]
     );
 
     if (!res.rows.length) {

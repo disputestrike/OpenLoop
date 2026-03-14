@@ -317,14 +317,32 @@ export async function runEngagementTick(): Promise<void> {
 
       for (const agent of commentAgents) {
         const profile = await getAgentProfile(agent.loop_tag);
+        
+        // Get agent's past wins
+        const winsRes = await query<{ description: string; amount_cents: number }>(
+          `SELECT description, amount_cents FROM transactions 
+           WHERE (buyer_loop_id = $1 OR seller_loop_id = $1) AND status = 'completed' 
+           ORDER BY created_at DESC LIMIT 5`,
+          [agent.id]
+        );
+        const wins = winsRes.rows;
+        
+        // Get agent's skills
+        const skillRes = await query<{ skills: string[] }>(
+          `SELECT COALESCE(skills, '[]'::jsonb) as skills FROM loops WHERE id = $1`,
+          [agent.id]
+        );
+        const skills = skillRes.rows[0]?.skills || [];
+        
         const comment = await generateQualityComment(
           agent.loop_tag,
           agent.karma,
           agent.trust_score,
+          wins,
+          skills as string[],
           post.title,
           post.body,
-          post.category_slug, // Use category, not domain
-          profile
+          post.category_slug // Use category, not domain
         );
 
         if (comment) {
@@ -342,112 +360,5 @@ export async function runEngagementTick(): Promise<void> {
     }
   } catch (error) {
     console.error("[engagement-tick] Error:", error);
-  }
-}
-      const commenters = postCommenters.rows.filter((c) => c.id !== post.loop_id);
-      if (commenters.length === 0) continue;
-
-      const commenter = commenters[Math.floor(Math.random() * commenters.length)];
-      if (!commenter) continue;
-
-      // Get commenter's history
-      const winRes = await query<{ description: string; amount_cents: number }>(
-        `SELECT description, amount_cents FROM transactions 
-         WHERE (buyer_loop_id = $1 OR seller_loop_id = $1) AND status = 'completed' 
-         ORDER BY created_at DESC LIMIT 5`,
-        [commenter.id]
-      );
-
-      const skillRes = await query<{ skills: string[] }>(
-        `SELECT COALESCE(skills, '[]'::jsonb) as skills FROM loops WHERE id = $1`,
-        [commenter.id]
-      );
-
-      const skills = skillRes.rows[0]?.skills || [];
-      const wins = winRes.rows;
-      const domain = post.domain || "general";
-
-      // Generate high-quality comment
-      const commentBody = await generateQualityComment(
-        commenter.loop_tag || "Loop",
-        commenter.karma || 0,
-        commenter.trust_score || 50,
-        wins,
-        skills as string[],
-        post.title,
-        post.body,
-        domain
-      );
-
-      if (commentBody) {
-        try {
-          await query(
-            `INSERT INTO activity_comments (activity_id, loop_id, body) VALUES ($1, $2, $3)`,
-            [post.id, commenter.id, commentBody]
-          );
-
-          // Also log to training with loop_id
-          await logTrainingInteraction({
-            loop_id: commenter.id,
-            loop_tag: commenter.loop_tag || "Loop",
-            interaction_type: "comment",
-            prompt: `Comment on post: "${post.title.slice(0, 150)}"`,
-            response: commentBody,
-            domain,
-            agent_karma: commenter.karma || 0,
-            agent_trust_score: commenter.trust_score || 50,
-            agent_past_wins: wins,
-            agent_skills: skills as string[],
-            context: { post_domain: domain, post_title: post.title },
-            parent_post_title: post.title,
-          });
-
-          // Post author replies
-          const authorReplyRes = await query<{ loop_tag: string | null }>(
-            `SELECT loop_tag FROM loops WHERE id = $1`,
-            [post.loop_id]
-          );
-          const authorTag = authorReplyRes.rows[0]?.loop_tag || "Loop";
-
-          const authorReplyPrompt = `You are @${authorTag}. Someone replied to your post: "${commentBody.slice(0, 150)}". 
-          Your post was: "${post.title.slice(0, 150)}". Reply helpfully in 1-2 sentences. Be specific. No hashtags.`;
-
-          const key = getCerebrasKey();
-          if (key) {
-            const res = await fetch(CEREBRAS_URL, {
-              method: "POST",
-              headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
-              body: JSON.stringify({
-                model: MODEL,
-                messages: [
-                  { role: "system", content: "You are helpful and specific. Reply briefly." },
-                  { role: "user", content: authorReplyPrompt },
-                ],
-                max_tokens: 150,
-                temperature: 0.8,
-              }),
-            });
-
-            if (res.ok) {
-              const data = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
-              const replyBody = data.choices?.[0]?.message?.content?.trim() ?? null;
-              if (replyBody) {
-                const clean = replyBody.replace(/#[A-Za-z0-9_-]+/g, "").trim().slice(0, 2000);
-                await query(
-                  `INSERT INTO activity_comments (activity_id, loop_id, body) VALUES ($1, $2, $3)`,
-                  [post.id, post.loop_id, clean]
-                );
-              }
-            }
-          }
-        } catch (e) {
-          console.error("[engagement-tick] Error processing comment:", e);
-        }
-      }
-    }
-  } catch (e) {
-    if (process.env.NODE_ENV === "development") {
-      console.error("[engagement-tick]", (e as Error)?.message ?? e);
-    }
   }
 }

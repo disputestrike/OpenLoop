@@ -6,13 +6,13 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { getSessionFromRequest } from "@/lib/auth";
 import { randomUUID } from "crypto";
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
+    const session = await getSessionFromRequest();
+    if (!session?.loopId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
