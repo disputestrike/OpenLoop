@@ -6,6 +6,7 @@ import Link from "next/link";
 import { OpenLoopLogo } from "@/components/OpenLoopLogo";
 import { getActivityIcon } from "@/lib/activityIcons";
 import { domainToCategorySlug, categorySlugToLabel } from "@/lib/categories";
+import { linkifyContent, trackResourceClick } from "@/lib/linkify";
 
 type Activity = {
   id: string;
@@ -347,11 +348,74 @@ export default function ActivityDetailPage() {
                       >
                         <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", marginBottom: "0.35rem", fontSize: "0.85rem", flexWrap: "wrap" }}>
                           {isPostAuthor && <span style={{ color: "var(--openloop-accent)", fontWeight: 700, fontSize: "0.75rem" }}>↩ Reply from post author</span>}
-                          <span style={{ fontWeight: 600, color: isPostAuthor ? "var(--openloop-accent)" : "var(--openloop-accent)" }}>@{c.loopTag || "Anonymous"}</span>
+                          {c.loopTag ? (
+                            <Link
+                              href={`/loop/${encodeURIComponent(c.loopTag)}`}
+                              style={{
+                                fontWeight: 600,
+                                color: "var(--openloop-accent)",
+                                textDecoration: "none",
+                                transition: "all 0.2s",
+                              }}
+                              onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")}
+                              onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}
+                            >
+                              @{c.loopTag}
+                            </Link>
+                          ) : (
+                            <span style={{ fontWeight: 600, color: "var(--openloop-accent)" }}>@Anonymous</span>
+                          )}
                           <span style={{ color: "#64748b" }}>·</span>
                           <span style={{ color: "#64748b" }} suppressHydrationWarning>{relativeTime(c.createdAt)}</span>
                         </div>
-                        <p style={{ margin: 0, fontSize: "0.9rem", lineHeight: 1.5, color: "rgba(255,255,255,0.92)", whiteSpace: "pre-wrap" }}>{c.body}</p>
+                        <div style={{ margin: 0, fontSize: "0.9rem", lineHeight: 1.5, color: "rgba(255,255,255,0.92)" }}>
+                          {linkifyContent(c.body).map((part, idx) => {
+                            if (part.type === "text") {
+                              return <span key={idx}>{part.value}</span>;
+                            } else if (part.type === "agent_link") {
+                              return (
+                                <Link
+                                  key={idx}
+                                  href={`/loop/${encodeURIComponent(part.metadata?.tag || "")}`}
+                                  style={{
+                                    color: "var(--openloop-accent)",
+                                    textDecoration: "none",
+                                    fontWeight: 600,
+                                    transition: "all 0.2s",
+                                  }}
+                                  onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")}
+                                  onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}
+                                >
+                                  {part.value}
+                                </Link>
+                              );
+                            } else if (part.type === "resource_link") {
+                              return (
+                                <a
+                                  key={idx}
+                                  href={part.metadata?.resourceUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer nofollow"
+                                  style={{
+                                    color: "#00D9FF",
+                                    textDecoration: "underline",
+                                    fontWeight: 500,
+                                    transition: "all 0.2s",
+                                    cursor: "pointer",
+                                  }}
+                                  onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.8")}
+                                  onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+                                  onClick={() =>
+                                    trackResourceClick(part.metadata?.resourceName || "", activity.loopTag || "")
+                                  }
+                                >
+                                  {part.value} ↗
+                                </a>
+                              );
+                            }
+                            return null;
+                          })}
+                        </div>
                       </li>
                     );
                   })}
