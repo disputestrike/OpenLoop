@@ -55,7 +55,7 @@ export async function GET(req: NextRequest) {
     "SELECT is_business, loop_tag FROM loops WHERE id = $1", [link.loop_id]
   ).catch(() => ({ rows: [] }));
   if (claimedLoop.rows[0]?.is_business && claimedLoop.rows[0]?.loop_tag) {
-    const { notifyWaitlistOnBusinessJoin } = await import("@/app/api/loops/business-waitlist/route");
+    const { notifyWaitlistOnBusinessJoin } = await import("@/lib/business-waitlist");
     notifyWaitlistOnBusinessJoin(claimedLoop.rows[0].loop_tag).catch(() => {});
   }
 

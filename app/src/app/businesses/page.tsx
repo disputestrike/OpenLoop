@@ -12,6 +12,7 @@ interface BusinessLoop {
   human_id: string | null;
   status: string;
   verified_business: boolean;
+  is_business?: boolean;
 }
 
 const CATEGORIES = [

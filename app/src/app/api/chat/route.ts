@@ -101,10 +101,12 @@ export async function POST(req: NextRequest) {
 
 async function extractAndSaveMemory(loopId:string, userMsg:string, assistantMsg:string) {
   const combined = `${userMsg} ${assistantMsg}`.toLowerCase();
-  for (const m of combined.matchAll(/i (prefer|like|hate|want|need) (.{3,50})/gi)) {
+  const prefMatches = Array.from(combined.matchAll(/i (prefer|like|hate|want|need) (.{3,50})/gi));
+  for (const m of prefMatches) {
     await query("INSERT INTO loop_memory (loop_id, memory_type, content, source) VALUES ($1, 'preference', $2, 'chat')", [loopId, m[0].slice(0,200)]).catch(()=>{});
   }
-  for (const m of combined.matchAll(/my (\w+) (bill|payment|plan) is \$?[\d.]+/gi)) {
+  const factMatches = Array.from(combined.matchAll(/my (\w+) (bill|payment|plan) is \$?[\d.]+/gi));
+  for (const m of factMatches) {
     await query("INSERT INTO loop_memory (loop_id, memory_type, content, source) VALUES ($1, 'fact', $2, 'chat')", [loopId, m[0].slice(0,200)]).catch(()=>{});
   }
 }

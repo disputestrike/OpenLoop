@@ -21,6 +21,11 @@ type Me = {
     webhookUrl?: string | null;
     persona?: string | null;
     onboardingComplete?: boolean;
+    skillTier?: number;
+    phoneNumber?: string | null;
+    isBusiness?: boolean;
+    walletBalanceCents?: number;
+    unreadMessages?: number;
   };
 };
 
@@ -229,7 +234,7 @@ export default function DashboardPage() {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatLoading, setChatLoading] = useState(false);
   const [ratedIds, setRatedIds] = useState<Set<string>>(new Set());
-  const [activeTab, setActiveTab] = useState<"chat" | "wallet" | "share" | "settings">("chat");
+  const [activeTab, setActiveTab] = useState<"chat" | "wallet" | "inbox" | "share" | "settings">("chat");
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

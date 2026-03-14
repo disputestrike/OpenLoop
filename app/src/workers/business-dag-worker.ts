@@ -18,7 +18,8 @@ const pool = new Pool({
   max: 20,
 });
 
-async function query<T = Record<string, unknown>>(sql: string, params: unknown[] = []) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function query<T extends Record<string, any> = Record<string, unknown>>(sql: string, params: unknown[] = []) {
   const client = await pool.connect();
   try {
     return await client.query<T>(sql, params);

@@ -89,7 +89,7 @@ export async function GET(req: NextRequest) {
   if (!loopRes.rows[0]) return NextResponse.json({ error: "Business Loop not found" }, { status: 404 });
 
   const activeThreads = threadsRes.rows.find(r => r.status === "active")?.count || "0";
-  const tierInfo = BUSINESS_TIERS[loopRes.rows[0].business_tier as string] || BUSINESS_TIERS.starter;
+  const tierInfo = BUSINESS_TIERS[(loopRes.rows[0] as Record<string,unknown>).business_tier as string] || BUSINESS_TIERS.starter;
 
   return NextResponse.json({
     loop: loopRes.rows[0],

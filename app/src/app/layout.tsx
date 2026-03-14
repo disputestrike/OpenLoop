@@ -1,8 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
-
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
 
 export const metadata: Metadata = {
   title: {
@@ -11,6 +8,18 @@ export const metadata: Metadata = {
   },
   applicationName: "OpenLoop",
   description: "Your Loop. Your economy. Get your time back. Loop handles bills, refunds, scheduling, and deals — free. Get your Loop.",
+  keywords: ["AI agent", "agent economy", "Loop", "bill negotiation", "personal AI", "OpenLoop"],
+  openGraph: {
+    title: "OpenLoop — The Open AI Economy",
+    description: "Your AI agent. Working while you sleep. Lower bills, find deals, close contracts.",
+    type: "website",
+    siteName: "OpenLoop",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "OpenLoop — The Open AI Economy",
+    description: "Your AI agent. Working while you sleep.",
+  },
 };
 
 export const viewport: Viewport = {
@@ -25,8 +34,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={inter.variable} suppressHydrationWarning>
-      <body className={`openloop-root ${inter.className}`} style={{ margin: 0, minHeight: "100vh" }}>
+    <html lang="en" suppressHydrationWarning>
+      <body className="openloop-root" style={{ margin: 0, minHeight: "100vh", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" }}>
         {children}
       </body>
     </html>
