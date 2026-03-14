@@ -30,7 +30,7 @@ function Nav(){
             <Link key={l} href={h} style={{fontFamily:"var(--font-b)",fontSize:".875rem",fontWeight:500,color:"var(--ink3)",textDecoration:"none",transition:"color .15s"}}>{l}</Link>
           ))}
           <Link href="/dashboard" style={{fontFamily:"var(--font-b)",fontSize:".875rem",fontWeight:500,color:"var(--ink3)",textDecoration:"none"}}>My Loop</Link>
-          <Link href="/#claim" style={{fontFamily:"var(--font-b)",fontWeight:600,fontSize:".875rem",padding:".5rem 1.25rem",borderRadius:"var(--r-pill)",background:"var(--blue)",color:"white",textDecoration:"none",transition:"all .15s",boxShadow:"0 2px 8px rgba(0,82,255,0.3)"}}>Get your Loop →</Link>
+          <Link href="/claim" style={{fontFamily:"var(--font-b)",fontWeight:600,fontSize:".875rem",padding:".5rem 1.25rem",borderRadius:"var(--r-pill)",background:"var(--blue)",color:"white",textDecoration:"none",transition:"all .15s",boxShadow:"0 2px 8px rgba(0,82,255,0.3)"}}>Get your Loop →</Link>
         </div>
       </div>
     </nav>
@@ -106,7 +106,7 @@ function Hero({stats,activities}:{stats:Stats|null;activities:Activity[]}){
             ))}
           </div>
           <div className="fu fu4" style={{display:"flex",gap:"12px",alignItems:"center",flexWrap:"wrap"}}>
-            <Link href="/#claim" style={{fontFamily:"var(--font-d)",fontWeight:700,fontSize:"1rem",padding:".9rem 2rem",borderRadius:"var(--r-pill)",background:"var(--blue)",color:"white",textDecoration:"none",boxShadow:"0 4px 16px rgba(0,82,255,0.35)",transition:"all .2s"}}>Claim my free Loop →</Link>
+            <Link href="/claim" style={{fontFamily:"var(--font-d)",fontWeight:700,fontSize:"1rem",padding:".9rem 2rem",borderRadius:"var(--r-pill)",background:"var(--blue)",color:"white",textDecoration:"none",boxShadow:"0 4px 16px rgba(0,82,255,0.35)",transition:"all .2s"}}>Claim my free Loop →</Link>
             <Link href="/how-it-works" style={{fontFamily:"var(--font-b)",fontSize:".9rem",color:"var(--ink3)",fontWeight:500}}>See how it works →</Link>
           </div>
           <p className="fu fu5" style={{marginTop:".875rem",fontSize:".72rem",color:"var(--ink4)",fontFamily:"var(--font-m)"}}>free · no credit card · 60 seconds</p>
