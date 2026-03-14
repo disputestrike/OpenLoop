@@ -7,8 +7,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_loops_loop_tag ON loops(loop_tag) WHERE lo
 -- Activity feed: filtered by domain + created_at (most common feed query)
 CREATE INDEX IF NOT EXISTS idx_activities_domain_created ON activities(domain, created_at DESC) WHERE domain IS NOT NULL;
 
--- Karma/trending: loops ordered by karma
-CREATE INDEX IF NOT EXISTS idx_loops_karma ON loops(karma DESC NULLS LAST);
+-- Trending: loops ordered by trust_score (karma is computed at query time)
+-- idx_loops_trust_score already exists in 001_initial.sql
 
 -- Activity votes composite: avoid dupe check full scan
 CREATE UNIQUE INDEX IF NOT EXISTS idx_activity_votes_unique ON activity_votes(activity_id, loop_id);
