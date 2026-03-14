@@ -1,4 +1,5 @@
 "use client";
+import BackNav from "@/components/BackNav";
 
 import Link from "next/link";
 
@@ -70,6 +71,8 @@ const INTEGRATIONS = [
 
 export default function IntegrationsPage() {
   return (
+    <>
+    <BackNav current="Integrations"/>
     <main style={{ padding: "2rem", maxWidth: "48rem", margin: "0 auto", fontFamily: "system-ui, sans-serif" }}>
       <div style={{ marginBottom: "2rem" }}>
         <Link href="/" style={{ color: "#0052FF", textDecoration: "none", fontSize: "0.875rem" }}>← Back to OpenLoop</Link>
@@ -124,5 +127,6 @@ export default function IntegrationsPage() {
         See <code style={{ background: "#F1F5F9", padding: "2px 6px", borderRadius: "4px" }}>.env.example</code> in the repo for all variables.
       </p>
     </main>
+    </>
   );
 }

@@ -88,10 +88,10 @@ function Hero({stats,activities}:{stats:Stats|null;activities:Activity[]}){
             <span style={{fontFamily:"var(--font-m)",fontSize:".72rem",color:"var(--blue)",fontWeight:600}}>{n.toLocaleString()} loops · {fmt(stats?.valueSavedCents??87553)} saved · {stats?.dealsCompleted??224} deals closed</span>
           </div>
           <h1 className="fu fu1" style={{fontFamily:"var(--font-d)",fontSize:"clamp(2.6rem,5vw,4rem)",fontWeight:800,color:"var(--ink)",lineHeight:1.08,letterSpacing:"-0.04em",margin:"0 0 1.5rem"}}>
-            Not a chatbot.<br/><span style={{color:"var(--blue)"}}>An economic agent.</span>
+            Your AI.<br/><span style={{color:"var(--blue)"}}>Working while you sleep.</span>
           </h1>
           <p className="fu fu2" style={{fontFamily:"var(--font-b)",fontSize:"1.15rem",color:"var(--ink3)",lineHeight:1.75,margin:"0 0 2rem",maxWidth:"38rem"}}>
-            Your Loop negotiates bills, books appointments, finds deals, files disputes, does research, manages tasks — anything you can describe. Agent to agent, channel to channel, 24/7.
+            Negotiates bills, books appointments, finds deals. On every channel. Automatically.
           </p>
           <div className="fu fu3" style={{display:"flex",flexDirection:"column",gap:"9px",marginBottom:"2.25rem"}}>
             {[
@@ -639,7 +639,7 @@ function ClaimCTA(){
         ):(
           <form onSubmit={submit}>
             <input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com" required
-              style={{width:"100%",padding:"1rem 1.25rem",borderRadius:"var(--r-lg)",border:"1px solid rgba(255,255,255,0.12)",background:"rgba(255,255,255,0.07)",color:"white",fontSize:"1rem",fontFamily:"var(--font-b)",outline:"none",marginBottom:".875rem",transition:"border-color .2s"}}/>
+              style={{width:"100%",padding:"1rem 1.25rem",borderRadius:"var(--r-lg)",border:"2px solid rgba(255,255,255,0.25)",background:"rgba(255,255,255,0.1)",color:"white",fontSize:"1rem",fontFamily:"var(--font-b)",outline:"none",marginBottom:".875rem",transition:"border-color .2s",boxShadow:"inset 0 1px 3px rgba(0,0,0,0.2)"}}/>
             {err&&<p style={{color:"#FF6B6B",fontSize:".8rem",marginBottom:".75rem",fontFamily:"var(--font-m)"}}>{err}</p>}
             <button type="submit" disabled={sub||!email.trim()} style={{width:"100%",padding:"1rem",borderRadius:"var(--r-lg)",border:"none",background:"var(--blue)",color:"white",fontFamily:"var(--font-d)",fontWeight:700,fontSize:"1rem",cursor:sub?"not-allowed":"pointer",boxShadow:"0 4px 20px rgba(0,82,255,0.5)",transition:"all .2s",opacity:sub||!email.trim()?.6:1}}>
               {sub?"Sending…":"Claim my free Loop →"}

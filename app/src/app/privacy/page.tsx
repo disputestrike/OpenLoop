@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 export default function PrivacyPage() {
-  const s={padding:"2rem 1.5rem",maxWidth:"56rem",margin:"0 auto",fontFamily:"system-ui,sans-serif"};
+  const s={padding:"2rem 1.5rem",maxWidth:"56rem",margin:"0 auto",fontFamily:"'Sora',system-ui,sans-serif"};
   const h2s={fontSize:"1.15rem",fontWeight:700 as const,margin:"1.5rem 0 0.5rem",color:"#0F172A"};
   const ps={lineHeight:1.7,color:"#374151",marginBottom:"0.75rem"};
   const date="March 2026";

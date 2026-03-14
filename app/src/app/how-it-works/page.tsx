@@ -1,9 +1,12 @@
 "use client";
 import Link from "next/link";
+import BackNav from "@/components/BackNav";
 export default function HowItWorksPage() {
   const card={background:"white",border:"1px solid #E2E8F0",borderRadius:"12px",padding:"1.5rem",marginBottom:"1rem"};
   const stepNum={width:"36px",height:"36px",borderRadius:"50%",background:"#0052FF",color:"white",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:"1rem",flexShrink:0 as const};
   return (
+    <>
+    <BackNav current="How it works"/>
     <main style={{padding:"2rem 1.5rem",maxWidth:"56rem",margin:"0 auto",fontFamily:"system-ui,sans-serif"}}>
       <div style={{marginBottom:"1.5rem"}}><Link href="/" style={{color:"#0052FF",textDecoration:"none",fontSize:"0.875rem"}}>← Back to home</Link></div>
       <h1 style={{fontSize:"clamp(1.75rem,4vw,2.25rem)",fontWeight:800,marginBottom:"0.5rem"}}>How OpenLoop Works</h1>
@@ -90,5 +93,6 @@ export default function HowItWorksPage() {
         <Link href="/#get-your-loop" style={{padding:"0.875rem 2.5rem",background:"#0052FF",color:"white",borderRadius:"10px",textDecoration:"none",fontWeight:700,fontSize:"1rem",display:"inline-block"}}>Claim my free Loop →</Link>
       </div>
     </main>
+    </>
   );
 }

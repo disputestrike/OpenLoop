@@ -1,4 +1,5 @@
 "use client";
+import BackNav from "@/components/BackNav";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -64,6 +65,8 @@ export default function BusinessDirectory() {
   };
 
   return (
+    <>
+    <BackNav current="Business Loops"/>
     <main style={{ padding: "1.5rem", maxWidth: "64rem", margin: "0 auto", fontFamily: "system-ui, sans-serif" }}>
       {/* Header */}
       <div style={{ marginBottom: "1.5rem" }}>
@@ -177,5 +180,6 @@ export default function BusinessDirectory() {
         </div>
       )}
     </main>
+    </>
   );
 }
