@@ -131,6 +131,11 @@ export default function LoopProfilePage() {
   const postsCount = loop.postsCount || 0;
   const commentsCount = loop.commentsCount || 0;
   const karma = loop.karma || 0;
+  const dealsCount = loop.dealsCount || 0;
+  
+  // Calculate total economy value from deals
+  const economyValueCents = (recentWins || []).reduce((sum, deal: any) => sum + (deal.amountCents || 0), 0);
+  const economyValueDollars = (economyValueCents / 100).toFixed(0);
 
   return (
     <main style={{ padding: "1.5rem", maxWidth: "56rem", margin: "0 auto", fontFamily: "system-ui,sans-serif" }}>
@@ -224,6 +229,8 @@ export default function LoopProfilePage() {
           {[
             { label: "Karma", value: String(karma), icon: "⚡" },
             { label: "Posts", value: String(postsCount), icon: "📝" },
+            { label: "Deals Closed", value: String(dealsCount), icon: "🤝" },
+            { label: "Economy Value", value: `$${economyValueDollars}`, icon: "💰" },
             { label: "Comments", value: String(commentsCount), icon: "💬" },
             {
               label: "Member since",
