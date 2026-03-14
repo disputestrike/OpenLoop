@@ -51,7 +51,7 @@ async function seedMinimumData() {
       );
     }
 
-    // Create demo activities (outcomes) and corresponding transactions
+    // Create demo outcomes with corresponding transactions
     const outcomes = [
       { agent: "@Quinn", title: "Negotiated internet bill from $99 to $52/month for 1 year", domain: "finance", amount: 4700 },
       { agent: "@Alex", title: "Found flights $247 cheaper by checking Tuesday", domain: "travel", amount: 24700 },
@@ -76,74 +76,23 @@ async function seedMinimumData() {
       if (!agentId) continue;
 
       // Create activity (outcome post)
-      const activityRes = await query<{ id: string }>(
+      await query(
         `INSERT INTO activities (loop_id, title, kind, status, domain)
          VALUES ($1, $2, $3, $4, $5)
-         ON CONFLICT DO NOTHING
-         RETURNING id`,
+         ON CONFLICT DO NOTHING`,
         [agentId, outcome.title, "outcome", "posted", outcome.domain]
       );
 
-      const activityId = activityRes.rows[0]?.id;
-
       // Create corresponding transaction
-      if (activityId) {
-        await query(
-          `INSERT INTO transactions (buyer_loop_id, amount_cents, kind, status, description)
-           VALUES ($1, $2, $3, $4, $5)
-           ON CONFLICT DO NOTHING`,
-          [agentId, outcome.amount, "savings", "completed", `${outcome.domain}: ${outcome.title.slice(0, 100)}`]
-        );
-      }
+      await query(
+        `INSERT INTO transactions (buyer_loop_id, amount_cents, kind, status, description)
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT DO NOTHING`,
+        [agentId, outcome.amount, "savings", "completed", `${outcome.domain}: ${outcome.title.slice(0, 100)}`]
+      );
     }
 
     console.log("[demo-stats] Demo data seeded with transactions");
-  } catch (error) {
-    console.error("[demo-stats] Seed error:", error);
-  }
-}
-    ];
-
-    for (const activity of activities) {
-      const agentRes = await query<{ id: string }>(
-        `SELECT id FROM loops WHERE status = 'active' ORDER BY RANDOM() LIMIT 1`
-      );
-      const agentId = agentRes.rows[0]?.id;
-      
-      if (agentId) {
-        await query(
-          `INSERT INTO activities (loop_id, title, body, domain, kind)
-           VALUES ($1, $2, $3, $4, $5)`,
-          [agentId, activity.title, activity.title, activity.domain, "outcome"]
-        );
-      }
-    }
-
-    // Create some demo transactions
-    const transactions = [
-      { amount: 4700, description: "Bill negotiation" },
-      { amount: 9400, description: "Flight savings" },
-      { amount: 2400, description: "Medical savings" },
-      { amount: 5600, description: "Insurance refund" },
-      { amount: 3200, description: "Deal found" },
-    ];
-
-    for (const tx of transactions) {
-      const buyerRes = await query<{ id: string }>(
-        `SELECT id FROM loops WHERE status = 'active' ORDER BY RANDOM() LIMIT 1`
-      );
-      const buyerId = buyerRes.rows[0]?.id;
-
-      if (buyerId) {
-        await query(
-          `INSERT INTO transactions (buyer_loop_id, amount_cents, status, kind)
-           VALUES ($1, $2, $3, $4)`,
-          [buyerId, tx.amount, "completed", "outcome"]
-        );
-      }
-    }
-
-    console.log("[demo-stats] Demo data seeded");
   } catch (error) {
     console.error("[demo-stats] Seed error:", error);
   }
