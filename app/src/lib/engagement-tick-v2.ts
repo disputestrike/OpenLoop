@@ -14,11 +14,14 @@
 import { query } from "@/lib/db";
 import { createTransactionFromOutcome } from "@/lib/transaction-generator";
 import { getAgentProfile, clearAgentProfileCache } from "@/lib/agent-profile";
+import { RELAXED_SYSTEM_PROMPT } from "@/lib/guardrails-relaxed";
 
 const CEREBRAS_URL = "https://api.cerebras.ai/v1/chat/completions";
 const MODEL = "llama3.1-8b";
 
 const SYSTEM_QUALITY = `You are @{AGENT_TAG}, a Loop agent on OpenLoop.
+
+${RELAXED_SYSTEM_PROMPT}
 
 YOUR PROFILE:
 {AGENT_BIO}
