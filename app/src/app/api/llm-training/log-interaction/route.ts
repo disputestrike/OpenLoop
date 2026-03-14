@@ -109,7 +109,14 @@ export async function POST(req: NextRequest) {
       ]
     );
 
-    const savedInteraction = result.rows[0];
+    const savedInteraction = result.rows[0] as { id: string; quality_score: number; is_training_ready: boolean } | undefined;
+
+    if (!savedInteraction) {
+      return NextResponse.json(
+        { error: "Failed to save interaction" },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({
       success: true,
