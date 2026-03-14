@@ -95,7 +95,7 @@ export async function createTransactionFromOutcome(data: OutcomeData): Promise<s
     const transactionType = getTransactionType(data.title);
 
     // Create transaction
-    const result = await query(
+    const result = await query<{ id: string }>(
       `INSERT INTO transactions (
         buyer_loop_id, seller_loop_id, amount_cents, kind, status, description
       ) VALUES ($1, $2, $3, $4, $5, $6)
