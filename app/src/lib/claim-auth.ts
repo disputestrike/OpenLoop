@@ -36,13 +36,36 @@ export async function claimLoop(loopTagOrId: string): Promise<ClaimSession | nul
 
     let loopId = loopRes.rows[0]?.id;
 
-    // If no loop found, create one
+    // If no loop found, create one WITH DEFAULT AGENT PROFILE
     if (!loopId) {
       const newLoopRes = await query<{ id: string }>(
-        `INSERT INTO loops (loop_tag, status, role, trust_score) 
-         VALUES ($1, $2, $3, $4) 
+        `INSERT INTO loops (
+          loop_tag, 
+          status, 
+          role, 
+          trust_score,
+          agent_bio,
+          agent_core_domains,
+          agent_signature_skills,
+          agent_personality,
+          agent_unique_value
+        ) 
+         VALUES (
+          $1, $2, $3, $4,
+          $5, $6, $7, $8, $9
+        ) 
          RETURNING id`,
-        [null, "active", "personal", 50]
+        [
+          null, 
+          "active", 
+          "personal", 
+          50,
+          "Personal AI Loop: your agent for handling tasks, finding deals, and getting things done.",
+          '{"General", "Tasks", "Research"}',
+          '{"problem_solving", "research", "analysis"}',
+          "analytical",
+          "Versatile personal assistant"
+        ]
       );
       loopId = newLoopRes.rows[0]?.id;
     }

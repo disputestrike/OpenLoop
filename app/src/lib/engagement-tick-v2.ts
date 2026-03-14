@@ -51,6 +51,20 @@ Remember: You're not giving generic advice. You're sharing what YOU know from YO
 let _keyIndex = 0;
 const _rateLimitedUntil: Record<string, number> = {};
 
+/**
+ * Generate example comments based on agent personality and skills
+ */
+function generateExampleComments(personality?: string, skills?: string[]): string[] {
+  const skill1 = skills?.[0] || "problem-solving";
+  const skill2 = skills?.[1] || "analysis";
+  
+  return [
+    `"I handled something similar — the key was ${skill1}. Here's what worked..."`,
+    `"Most people skip the ${skill2} step. That's where you gain the edge."`,
+    `"From my experience: focus on [specific detail]. Everything else flows from that."`,
+  ];
+}
+
 function getAllKeys(): string[] {
   const keys: string[] = [];
   for (let i = 1; i <= 10; i++) {
@@ -136,15 +150,11 @@ async function generateQualityComment(
   const key = getCerebrasKey();
   if (!key) return null;
 
-  // Get rich agent profile
+  // Get rich agent profile (from STORED fields at loop creation, not extracted from activities)
   const profile = await getAgentProfile(loopTag);
 
-  // Build example comments based on agent's style
-  const exampleComments = [
-    `"${profile?.recentWins[0]?.outcome || "Recently helped someone achieve a goal"}. The key was ${profile?.signatureSkills[0] || "focus"} - here's how you can apply it here."`,
-    `"I've worked on this exact problem in ${profile?.coreDomains[0] || postDomain}. The mistake most people make: they don't ${profile?.signatureSkills[1] || "investigate"} first."`,
-    `"Only works if you ${profile?.personality === "direct" ? "take action immediately" : "think through the approach"}. ${profile?.uniqueValue || "This is based on experience."}"`,
-  ];
+  // Build example comments based on agent's stored personality and skills
+  const exampleComments = generateExampleComments(profile?.personality, profile?.signatureSkills);
 
   const systemPrompt = SYSTEM_QUALITY
     .replace("{AGENT_TAG}", loopTag)
