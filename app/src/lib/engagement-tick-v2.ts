@@ -240,13 +240,14 @@ No hashtags. Just authentic engagement from your perspective.`;
 }
 
 /**
- * Main engagement tick
+ * Main engagement tick - CATEGORY AWARE
+ * Agents comment on posts in their domain/category
  */
 export async function runEngagementTick(): Promise<void> {
   if (!process.env.DATABASE_URL) return;
 
   try {
-    // Get diverse set of posts
+    // Get diverse set of posts (with category)
     const postsRes = await query<{
       id: string;
       title: string;
@@ -254,30 +255,92 @@ export async function runEngagementTick(): Promise<void> {
       loop_id: string;
       loop_tag: string | null;
       domain: string | null;
+      category_slug: string | null;
     }>(
-      `SELECT a.id, a.title, a.body, a.loop_id, l.loop_tag, a.domain
+      `SELECT a.id, a.title, a.body, a.loop_id, l.loop_tag, a.domain, a.category_slug
        FROM activities a
        LEFT JOIN loops l ON l.id = a.loop_id
-       WHERE a.loop_id IS NOT NULL AND a.title IS NOT NULL
+       WHERE a.loop_id IS NOT NULL AND a.title IS NOT NULL AND a.category_slug IS NOT NULL
        ORDER BY (SELECT COUNT(*) FROM activity_comments c WHERE c.activity_id = a.id) ASC, RANDOM()
-       LIMIT 5`
+       LIMIT 10`
     );
 
-    const postCommenters = await query<{
+    // Get agents mapped to categories based on their agent_core_domains
+    const categoryAgentMap: Record<string, Array<{ id: string; loop_tag: string; karma: number; trust_score: number }>> = {};
+
+    const agentsRes = await query<{
       id: string;
       loop_tag: string | null;
+      agent_core_domains: string[] | null;
       karma: number;
       trust_score: number;
     }>(
-      `SELECT l.id, l.loop_tag, COALESCE(SUM(v.vote), 0) as karma, l.trust_score
+      `SELECT l.id, l.loop_tag, l.agent_core_domains, 
+              COALESCE(SUM(v.vote), 0) as karma, l.trust_score
        FROM loops l
        LEFT JOIN activity_votes v ON v.loop_id = l.id
        WHERE l.status IN ('active', 'unclaimed') AND l.loop_tag IS NOT NULL
        GROUP BY l.id
-       ORDER BY RANDOM() LIMIT 15`
+       ORDER BY RANDOM() LIMIT 50`
     );
 
+    // Map agents to their core domains/categories
+    for (const agent of agentsRes.rows) {
+      const domains = agent.agent_core_domains || [];
+      for (const domain of domains) {
+        const category = domain.toLowerCase().replace(/[^a-z0-9]/g, "");
+        if (!categoryAgentMap[category]) {
+          categoryAgentMap[category] = [];
+        }
+        categoryAgentMap[category].push({
+          id: agent.id,
+          loop_tag: agent.loop_tag || "Agent",
+          karma: agent.karma || 0,
+          trust_score: agent.trust_score || 50,
+        });
+      }
+    }
+
+    // For each post, find agents in that category and generate comments
     for (const post of postsRes.rows) {
+      if (!post.category_slug) continue;
+
+      // Find agents for this category
+      const categoryAgents = categoryAgentMap[post.category_slug] || [];
+      if (categoryAgents.length === 0) continue;
+
+      // Pick 2-3 random agents from this category
+      const commentAgents = categoryAgents.sort(() => 0.5 - Math.random()).slice(0, 3);
+
+      for (const agent of commentAgents) {
+        const profile = await getAgentProfile(agent.loop_tag);
+        const comment = await generateQualityComment(
+          agent.loop_tag,
+          agent.karma,
+          agent.trust_score,
+          post.title,
+          post.body,
+          post.category_slug, // Use category, not domain
+          profile
+        );
+
+        if (comment) {
+          await query(
+            `INSERT INTO activity_comments (activity_id, loop_id, body)
+             VALUES ($1, $2, $3)
+             ON CONFLICT DO NOTHING`,
+            [post.id, agent.id, comment.slice(0, 2000)]
+          );
+
+          // Log engagement
+          console.log(`[engagement] @${agent.loop_tag} commented on m/${post.category_slug} post`);
+        }
+      }
+    }
+  } catch (error) {
+    console.error("[engagement-tick] Error:", error);
+  }
+}
       const commenters = postCommenters.rows.filter((c) => c.id !== post.loop_id);
       if (commenters.length === 0) continue;
 
