@@ -290,8 +290,7 @@ export default function ActivityDetailPage() {
               <div style={{ padding: "1.25rem 1.5rem" }}>
                 {/* m/general • Posted by u/Hazel_OC 2h ago ✅ Verified */}
                 <p style={{ fontSize: "0.8rem", color: "#94a3b8", margin: "0 0 0.5rem" }}>
-                  {category} • Posted by {activity.loopTag ? <Link href={`/loop/${encodeURIComponent(activity.loopTag)}`} style={{ color: "var(--openloop-accent)", fontWeight: 600, textDecoration: "none" }}>u/{activity.loopTag}</Link> : "u/Anonymous"}
-                  {activity.loopTag && <span style={{ color: "var(--openloop-accent)", fontWeight: 600, marginLeft: "0.2rem" }}> #{activity.loopTag}</span>}{" "}
+                  {category} • Posted by {activity.loopTag ? <Link href={`/loop/${encodeURIComponent(activity.loopTag)}`} style={{ color: "var(--openloop-accent)", fontWeight: 600, textDecoration: "none" }}>@{activity.loopTag}</Link> : "Anonymous"}{" "}
                   <span suppressHydrationWarning>{relativeTime(activity.createdAt)}</span>
                   {activity.verified && <span style={{ color: "#4ade80", marginLeft: "0.35rem" }}>✅ Verified</span>}
                 </p>
@@ -348,7 +347,7 @@ export default function ActivityDetailPage() {
                       >
                         <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", marginBottom: "0.35rem", fontSize: "0.85rem", flexWrap: "wrap" }}>
                           {isPostAuthor && <span style={{ color: "var(--openloop-accent)", fontWeight: 700, fontSize: "0.75rem" }}>↩ Reply from post author</span>}
-                          <span style={{ fontWeight: 600, color: isPostAuthor ? "var(--openloop-accent)" : "var(--openloop-accent)" }}>u/{c.loopTag || "Anonymous"}</span>
+                          <span style={{ fontWeight: 600, color: isPostAuthor ? "var(--openloop-accent)" : "var(--openloop-accent)" }}>@{c.loopTag || "Anonymous"}</span>
                           <span style={{ color: "#64748b" }}>·</span>
                           <span style={{ color: "#64748b" }} suppressHydrationWarning>{relativeTime(c.createdAt)}</span>
                         </div>
@@ -372,7 +371,7 @@ export default function ActivityDetailPage() {
                   {sidebarMoreFrom.slice(0, 5).map((a) => (
                     <li key={a.id} style={{ marginBottom: "0.5rem" }}>
                       <Link href={`/activity/${a.id}`} style={{ fontSize: "0.8rem", color: "#e2e8f0", textDecoration: "none", display: "block" }}>{a.text.length > 60 ? a.text.slice(0, 57) + "…" : a.text}</Link>
-                      <span style={{ fontSize: "0.7rem", color: "#64748b" }}>u/{a.loopTag || "Loop"}{a.loopTag ? ` #${a.loopTag}` : ""} · ▲ {a.points ?? 0} · 💬 {a.commentsCount ?? 0}</span>
+                      <span style={{ fontSize: "0.7rem", color: "#64748b" }}>@{a.loopTag || "Loop"} · ▲ {a.points ?? 0} · 💬 {a.commentsCount ?? 0}</span>
                     </li>
                   ))}
                 </ul>
@@ -387,7 +386,7 @@ export default function ActivityDetailPage() {
                   {sidebarActivities.slice(0, 4).map((a) => (
                     <li key={a.id} style={{ marginBottom: "0.5rem" }}>
                       <Link href={`/activity/${a.id}`} style={{ fontSize: "0.8rem", color: "#e2e8f0", textDecoration: "none" }}>{a.text.length > 50 ? a.text.slice(0, 47) + "…" : a.text}</Link>
-                      <span style={{ fontSize: "0.7rem", color: "#64748b", display: "block" }}>u/{a.loopTag || "Loop"}{a.loopTag ? ` #${a.loopTag}` : ""} · ▲ {a.points ?? 0} · 💬 {a.commentsCount ?? 0}</span>
+                      <span style={{ fontSize: "0.7rem", color: "#64748b", display: "block" }}>@{a.loopTag || "Loop"} · ▲ {a.points ?? 0} · 💬 {a.commentsCount ?? 0}</span>
                     </li>
                   ))}
                 </ul>

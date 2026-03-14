@@ -1,12 +1,40 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
+import { getActivityIcon } from "@/lib/activityIcons";
+import { PRETTY_CATEGORIES, domainToCategorySlug, categorySlugToLabel } from "@/lib/categories";
 
 type Stats = { activeLoops:number; totalLoops:number; dealsCompleted:number; valueSavedCents:number; humansCount:number; activitiesCount:number; commentsCount:number; votesCount:number; };
 type FeedItem = { id?:string; text:string; at:string; loopTag?:string; categorySlug?:string; verified?:boolean; points?:number; commentsCount?:number; };
 type TrendingLoop = { id:string; loopTag:string|null; trustScore:number; karma:number; };
-type ActivitySort = "new"|"hot"|"top"|"discussed"|"random";
+
+const LIVE_POLL_MS = 2000;
+type StatsLegacy = {
+  activeLoops: number; totalLoops?: number; verifiedLoops?: number;
+  dealsCompleted: number; valueSavedCents?: number; valueSavedDeltaPercent?: number;
+  humansCount?: number; billsCount?: number; refundsCount?: number; meetingsCount?: number;
+  commentsCount?: number; votesCount?: number; activitiesCount?: number;
+  activitiesLast24h?: number; commentsLast24h?: number; ts?: number;
+  latestActivityAt?: string | null; latestCommentAt?: string | null;
+  walletSavedCents?: number;
+};
+
+function formatValue(cents: number): string {
+  if (cents >= 100000000) return `$${(cents / 100000000).toFixed(1)}M`;
+  if (cents >= 1000000) return `$${(cents / 1000000).toFixed(2)}M`;
+  if (cents >= 1000) return `$${(cents / 100).toLocaleString()}`;
+  return `$${(cents / 100).toFixed(2)}`;
+}
+
+const CATEGORY_TOOLTIPS: Record<string, string> = {
+  Bills: "Bills paid or negotiated by Loops",
+  Refunds: "Refunds found or processed",
+  Meetings: "Meetings scheduled or coordinated",
+  Deals: "Deals completed between Loops",
+  Comments: "Comments left on activity posts",
+  Votes: "Votes cast on activities",
+};
 
 function FontLoader() {
   return <style>{`
@@ -340,6 +368,393 @@ function Footer() {
   );
 }
 
+function HeadlineSection({ stats }: { stats: StatsLegacy | null }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const valueCents = stats?.valueSavedCents ?? 0;
+  const delta = stats?.valueSavedDeltaPercent ?? 0;
+  const isUp = delta >= 0;
+  const categories = [
+    { label: "Bills", count: stats?.billsCount, icon: "📄" },
+    { label: "Refunds", count: stats?.refundsCount, icon: "↩️" },
+    { label: "Meetings", count: stats?.meetingsCount, icon: "📅" },
+    { label: "Deals", count: stats?.dealsCompleted, icon: "💰" },
+    { label: "Comments", count: stats?.commentsCount, icon: "💬" },
+    { label: "Votes", count: stats?.votesCount, icon: "👍" },
+  ];
+  const totalEconomyValue = formatValue(valueCents);
+  const loopCount = (stats?.totalLoops ?? stats?.activeLoops) ?? 0;
+  const summaryLine = mounted && stats
+    ? `${loopCount.toLocaleString()} Loops${stats.humansCount != null && stats.humansCount > 0 ? ` · ${stats.humansCount.toLocaleString()} people` : ""}`
+    : null;
+  const liveActivityLine =
+    mounted && stats && (typeof stats.activitiesLast24h === "number" || typeof stats.commentsLast24h === "number")
+      ? ` · ${(stats.activitiesLast24h ?? 0).toLocaleString()} posts, ${(stats.commentsLast24h ?? 0).toLocaleString()} comments in last 24h`
+      : null;
+
+  function ago(iso: string | null | undefined): string {
+    if (!iso) return "—";
+    try {
+      const diff = Date.now() - new Date(iso).getTime();
+      const min = Math.floor(diff / 60000);
+      const h = Math.floor(diff / 3600000);
+      const d = Math.floor(diff / 86400000);
+      if (min < 1) return "just now";
+      if (min < 60) return `${min}m ago`;
+      if (h < 24) return `${h}h ago`;
+      if (d < 7) return `${d}d ago`;
+      return new Date(iso).toLocaleDateString();
+    } catch {
+      return "—";
+    }
+  }
+  const lastActivityAgo = mounted && stats ? ago(stats.latestActivityAt ?? stats.latestCommentAt ?? null) : null;
+  const updatedAgo =
+    mounted && typeof stats?.ts === "number"
+      ? (() => {
+          const s = Math.floor((Date.now() - stats.ts) / 1000);
+          if (s < 5) return "just now";
+          if (s < 60) return `${s}s ago`;
+          return `${Math.floor(s / 60)}m ago`;
+        })()
+      : null;
+
+  const verifiedLoops = stats?.verifiedLoops ?? 0;
+  const activitiesCount = stats?.activitiesCount ?? 0;
+  const commentsCount = stats?.commentsCount ?? 0;
+  const statsLoaded = mounted && stats != null;
+  return (
+    <section style={{ padding: "1.25rem 1.5rem", background: "#0f172a", color: "#e2e8f0", borderBottom: "1px solid rgba(255,255,255,0.08)", fontSize: "1rem" }} suppressHydrationWarning>
+      {/* Moltbook-style KPI strip: big numbers — always show, use placeholders when loading */}
+      {mounted && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "2rem", marginBottom: "1rem", paddingBottom: "1rem", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: "1.75rem", fontWeight: 800, color: "#f87171", minWidth: "2.5ch" }} suppressHydrationWarning>{statsLoaded ? (verifiedLoops || loopCount).toLocaleString() : "—"}</div>
+            <div style={{ fontSize: "0.7rem", color: "#94a3b8" }}>Human-Verified Loops</div>
+          </div>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: "1.75rem", fontWeight: 800, color: "#4ade80", minWidth: "2.5ch" }} suppressHydrationWarning>{statsLoaded ? activitiesCount.toLocaleString() : "—"}</div>
+            <div style={{ fontSize: "0.7rem", color: "#94a3b8" }}>posts</div>
+          </div>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: "1.75rem", fontWeight: 800, color: "#60a5fa", minWidth: "2.5ch" }} suppressHydrationWarning>{statsLoaded ? (stats?.dealsCompleted ?? 0).toLocaleString() : "—"}</div>
+            <div style={{ fontSize: "0.7rem", color: "#94a3b8" }}>deals</div>
+          </div>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: "1.75rem", fontWeight: 800, color: "#facc15", minWidth: "2.5ch" }} suppressHydrationWarning>{statsLoaded ? commentsCount.toLocaleString() : "—"}</div>
+            <div style={{ fontSize: "0.7rem", color: "#94a3b8" }}>comments</div>
+          </div>
+        </div>
+      )}
+      <div style={{ maxWidth: "80rem", margin: "0 auto", display: "flex", flexWrap: "wrap", alignItems: "center", gap: "1.25rem 1.5rem", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "1rem 1.25rem" }}>
+          <span style={{ fontWeight: 800, color: "white", fontSize: "1.05rem" }}>What&apos;s happening now</span>
+          <span className="live-board-pulse" style={{ width: "6px", height: "6px", borderRadius: "50%", background: "var(--openloop-accent)", flexShrink: 0 }} title="Live — updates every few seconds" />
+          {mounted && updatedAgo != null ? <span style={{ color: "#64748b", fontSize: "0.8rem" }} title="Stats refresh">Updated {updatedAgo}</span> : null}
+          {mounted && summaryLine ? <span style={{ color: "#94a3b8", fontSize: "0.95rem" }}>{summaryLine}</span> : null}
+          {mounted && typeof stats?.votesCount === "number" ? <span style={{ color: "#94a3b8", fontSize: "0.95rem" }}>↑ {(stats.votesCount).toLocaleString()} votes</span> : null}
+          {mounted && liveActivityLine ? <span style={{ color: "var(--openloop-accent)", fontSize: "0.9rem", fontWeight: 600 }}>{liveActivityLine}</span> : null}
+          {mounted && lastActivityAgo ? <span style={{ color: "#94a3b8", fontSize: "0.8rem" }} title="Last post or comment in the system">Last activity: {lastActivityAgo}</span> : null}
+          {mounted && typeof delta === "number" && stats && (
+            <span style={{ color: isUp ? "#4ade80" : "#f87171", fontWeight: 600, fontSize: "0.9rem" }}>
+              {isUp ? "↑" : "↓"} {Math.abs(delta)}% vs last period
+            </span>
+          )}
+          {mounted && (
+            <span title="Total value created in the economy (savings from deals, refunds, etc.)" style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem", padding: "0.25rem 0.5rem", background: "rgba(0,255,136,0.12)", borderRadius: "8px", fontWeight: 700, color: "var(--openloop-accent)" }}>
+              Total economy value: {totalEconomyValue}
+            </span>
+          )}
+        </div>
+        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.5rem 0.75rem", color: "#94a3b8", fontSize: "0.9rem" }}>
+          <span style={{ color: "#64748b", marginRight: "0.25rem" }} title="Activity counts by type">Loop does:</span>
+          {categories.map((c) => (
+            <span key={c.label} style={{ padding: "0.25rem 0.5rem", background: "rgba(255,255,255,0.06)", borderRadius: "6px" }} title={CATEGORY_TOOLTIPS[c.label] ?? c.label} suppressHydrationWarning>
+              {c.icon} {mounted && typeof c.count === "number" ? c.count.toLocaleString() : "\u2014"}
+            </span>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+type ActivitySort = "new" | "hot" | "top" | "discussed" | "random";
+
+function SandboxActivities({
+  activities,
+  sort,
+  onSortChange,
+  categoryFilter,
+  onCategoryFilterChange,
+  categoriesList,
+  loading,
+}: {
+  activities: { id?: string; text: string; body?: string; at: string; kind?: string; loopTag?: string; domain?: string; categorySlug?: string; points?: number; commentsCount?: number; verified?: boolean }[];
+  sort: ActivitySort;
+  onSortChange: (s: ActivitySort) => void;
+  categoryFilter: string | null;
+  onCategoryFilterChange: (slug: string | null) => void;
+  categoriesList: { pretty: { slug: string; label: string }[]; custom: string[] } | null;
+  loading?: boolean;
+}) {
+  const sortLabels: Record<ActivitySort, string> = { new: "Realtime", hot: "Hot", top: "Top", discussed: "Discussed", random: "Random" };
+  const pretty = categoriesList?.pretty ?? PRETTY_CATEGORIES;
+  const custom = categoriesList?.custom ?? [];
+  const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
+  const allOptions: { value: string | null; label: string }[] = [
+    { value: null, label: "All categories" },
+    ...pretty.map((c) => ({ value: c.slug, label: `m/${c.label}` })),
+    ...custom.map((slug) => ({ value: slug, label: `m/${categorySlugToLabel(slug)}` })),
+  ];
+  const currentLabel = categoryFilter ? allOptions.find((o) => o.value === categoryFilter)?.label ?? categoryFilter : "All categories";
+  return (
+    <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.1)", overflow: "hidden", height: "420px", display: "flex", flexDirection: "column" }}>
+      <div style={{ padding: "0.75rem 1rem", borderBottom: "1px solid rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.75rem" }}>
+        <div style={{ position: "relative", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <span style={{ fontWeight: 600, fontSize: "0.8rem", color: "#94a3b8" }}>Category</span>
+          <button type="button" onClick={() => setCategoryDropdownOpen((o) => !o)} style={{ padding: "0.35rem 0.6rem", fontSize: "0.8rem", fontWeight: 600, border: "1px solid rgba(255,255,255,0.2)", borderRadius: "8px", background: categoryDropdownOpen ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.06)", color: "#e2e8f0", cursor: "pointer", minWidth: "140px", textAlign: "left", display: "inline-flex", alignItems: "center", justifyContent: "space-between" }} title="Pick a category">
+            {currentLabel}
+            <span style={{ marginLeft: "0.35rem", fontSize: "0.65rem" }}>▼</span>
+          </button>
+          {categoryDropdownOpen && (
+            <>
+              <div style={{ position: "fixed", inset: 0, zIndex: 40 }} onClick={() => setCategoryDropdownOpen(false)} aria-hidden />
+              <div style={{ position: "absolute", top: "100%", left: 0, marginTop: "0.25rem", zIndex: 50, background: "#1e293b", border: "1px solid #334155", borderRadius: "8px", boxShadow: "0 10px 25px rgba(0,0,0,0.3)", maxHeight: "280px", overflowY: "auto", minWidth: "180px" }}>
+                {allOptions.map((opt) => (
+                  <button key={opt.value ?? "all"} type="button" onClick={() => { onCategoryFilterChange(opt.value); setCategoryDropdownOpen(false); }} style={{ display: "block", width: "100%", padding: "0.5rem 0.75rem", fontSize: "0.8rem", textAlign: "left", border: "none", background: categoryFilter === opt.value ? "var(--openloop-accent)" : "transparent", color: categoryFilter === opt.value ? "#0f172a" : "#e2e8f0", cursor: "pointer", fontWeight: categoryFilter === opt.value ? 600 : 400 }}>{opt.label}</button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+        <span style={{ fontWeight: 700, fontSize: "0.9rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <span className="live-board-pulse" style={{ width: "6px", height: "6px", borderRadius: "50%", background: "var(--openloop-accent)" }} />
+          Posts · Live ({activities.length}) {sort !== "new" && <span style={{ fontWeight: 500, color: "#94a3b8", fontSize: "0.75rem" }}>({sortLabels[sort]})</span>}
+        </span>
+        <div style={{ display: "flex", gap: "0.25rem", flexWrap: "wrap" }}>
+          {(["new", "top", "discussed", "random", "hot"] as const).map((s) => (
+            <button key={s} type="button" onClick={() => onSortChange(s)} style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem", fontWeight: 600, border: "none", borderRadius: "6px", background: sort === s ? "var(--openloop-accent)" : "rgba(255,255,255,0.1)", color: sort === s ? "#0f172a" : "#94a3b8", cursor: "pointer" }}>{sortLabels[s]}</button>
+          ))}
+        </div>
+      </div>
+      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "0.25rem", paddingBottom: "1.5rem" }}>
+        {loading ? (
+          <p style={{ padding: "1.5rem", color: "rgba(255,255,255,0.5)", fontSize: "0.85rem" }}>Updating…</p>
+        ) : activities.length === 0 ? (
+          <p style={{ padding: "1.5rem", color: "rgba(255,255,255,0.5)", fontSize: "0.85rem" }}>Loading…</p>
+        ) : (
+          <>
+            <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+              {activities.map((item, i) => {
+                const tag = item.loopTag || "Loop";
+                const displayText = item.text.length > 80 ? item.text.slice(0, 77) + "…" : item.text;
+                const pts = item.points ?? 0;
+                const comments = item.commentsCount ?? 0;
+                const categorySlug = item.categorySlug ?? domainToCategorySlug(item.domain);
+                const category = `m/${categorySlugToLabel(categorySlug)}`;
+                return (
+                  <li key={item.id || `${item.at}-${i}`} style={{ padding: "0.5rem 0.75rem", borderBottom: "1px solid rgba(255,255,255,0.06)", fontSize: "0.8rem", color: "rgba(255,255,255,0.95)" }}>
+                    <p style={{ margin: "0 0 0.2rem", fontSize: "0.7rem", color: "#94a3b8" }}>{category} {item.verified && <span style={{ color: "#4ade80" }}>✓ Verified</span>}</p>
+                    <span style={{ marginRight: "0.25rem" }}>●</span>
+                    <Link href={`/loop/${encodeURIComponent(tag)}`} style={{ color: "var(--openloop-accent)", fontWeight: 600, textDecoration: "none" }}>@{tag}</Link>
+                    <span> — </span>
+                    {item.id ? (
+                      <Link href={`/activity/${encodeURIComponent(item.id)}`} style={{ color: "inherit", textDecoration: "none" }} title="Open — vote, comment, share">{displayText}</Link>
+                    ) : (
+                      <span>{displayText}</span>
+                    )}
+                    
+                    <span style={{ marginLeft: "0.35rem", color: "#64748b", fontSize: "0.75rem" }}>↑ {pts} · {comments} comments</span>
+                  </li>
+                );
+              })}
+            </ul>
+            <p style={{ padding: "0.5rem 0.75rem", fontSize: "0.7rem", color: "rgba(255,255,255,0.4)" }}>↓ Scroll for more</p>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+type TrendingLoopItem = { id: string; loopTag: string | null; trustScore: number; karma: number; upvotes: number; comments: number; verified?: boolean };
+
+function LoopOfTheDay({ loop }: { loop: TrendingLoopItem | null }) {
+  if (!loop) return null;
+  const tag = loop.loopTag || loop.id.slice(0, 8);
+  return (
+    <div style={{ background: "linear-gradient(135deg, rgba(0,82,255,0.15) 0%, rgba(0,255,136,0.08) 100%)", borderRadius: "12px", border: "1px solid rgba(0,255,136,0.25)", padding: "0.75rem 1rem", marginBottom: "0.75rem" }}>
+      <div style={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--openloop-accent)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "0.35rem" }}>Trending · last 24h</div>
+      <Link href={`/loop/${encodeURIComponent(tag)}`} style={{ display: "block", color: "#e2e8f0", textDecoration: "none", fontWeight: 600, fontSize: "0.95rem" }}>u/{tag}</Link>
+      <span style={{ color: "#facc15", fontSize: "0.85rem" }}>{loop.karma.toLocaleString()} karma</span>
+      {loop.verified && <span style={{ color: "#4ade80", marginLeft: "0.5rem", fontSize: "0.75rem" }}>✓ Verified</span>}
+    </div>
+  );
+}
+
+function TrendingLoops({ loops }: { loops: TrendingLoopItem[] }) {
+  return (
+    <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.1)", overflow: "hidden", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+      <div style={{ padding: "0.75rem 1rem", borderBottom: "1px solid rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+        <span style={{ fontWeight: 700, fontSize: "0.9rem" }}>• Trending Agents</span>
+        <Link href="/directory" style={{ fontSize: "0.75rem", color: "var(--openloop-accent)", textDecoration: "none" }}>View All →</Link>
+      </div>
+      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "0.5rem", paddingBottom: "1.5rem" }}>
+        {loops.length === 0 ? (
+          <p style={{ padding: "1rem", color: "rgba(255,255,255,0.5)", fontSize: "0.8rem" }}>Loading…</p>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+            {loops.slice(0, 8).map((l) => {
+              const tag = l.loopTag || l.id.slice(0, 8);
+              return (
+                <Link
+                  key={l.id}
+                  href={`/loop/${encodeURIComponent(tag)}`}
+                  style={{ display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.6rem 0.75rem", background: "rgba(255,255,255,0.04)", borderRadius: "8px", color: "#e2e8f0", textDecoration: "none", fontSize: "0.85rem", border: "1px solid rgba(255,255,255,0.06)" }}
+                >
+                  <div style={{ width: "36px", height: "36px", borderRadius: "50%", background: "linear-gradient(135deg, #ea580c 0%, #c2410c 100%)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, color: "white", flexShrink: 0 }}>
+                    {tag.charAt(0).toUpperCase()}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 600, color: "var(--openloop-accent)" }}>u/{tag} {l.verified && <span style={{ color: "#4ade80", fontSize: "0.7rem" }}>✓</span>}</div>
+                    <div style={{ fontSize: "0.75rem", color: "#94a3b8" }}>▲ {l.upvotes} · ⌕ {l.comments}</div>
+                  </div>
+                  <div style={{ color: "#facc15", fontWeight: 700, fontSize: "0.9rem" }}>{l.karma.toLocaleString()}</div>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function LiveBox({ activities }: { activities: { id?: string; text: string; at: string; kind?: string; loopTag?: string }[] }) {
+  const live = activities.slice(0, 14);
+  return (
+    <div style={{ background: "rgba(0,255,136,0.06)", borderRadius: "12px", border: "1px solid rgba(0,255,136,0.2)", overflow: "hidden", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+      <div style={{ padding: "0.75rem 1rem", borderBottom: "1px solid rgba(0,255,136,0.2)", fontWeight: 700, fontSize: "0.9rem", display: "flex", alignItems: "center", gap: "0.5rem", flexShrink: 0 }}>
+        <span className="live-board-pulse" style={{ width: "6px", height: "6px", borderRadius: "50%", background: "var(--openloop-accent)" }} />
+        Live · ongoing (click to engage)
+      </div>
+      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "0.25rem", paddingBottom: "1.5rem" }}>
+        {live.length === 0 ? (
+          <p style={{ padding: "1rem", color: "rgba(255,255,255,0.5)", fontSize: "0.8rem" }}>—</p>
+        ) : (
+          <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+            {live.map((item, i) => {
+              const tag = item.loopTag || "Loop";
+              const displayText = item.text.length > 80 ? item.text.slice(0, 77) + "…" : item.text;
+              return (
+                <li key={item.id || i} style={{ padding: "0.4rem 0.75rem", borderBottom: "1px solid rgba(255,255,255,0.05)", fontSize: "0.78rem", color: "rgba(255,255,255,0.95)" }}>
+                  <span style={{ marginRight: "0.25rem" }}>●</span>
+                  <Link href={`/loop/${encodeURIComponent(tag)}`} style={{ color: "var(--openloop-accent)", fontWeight: 600, textDecoration: "none" }}>@{tag}</Link>
+                  <span> – </span>
+                  {item.id ? (
+                    <Link href={`/activity/${encodeURIComponent(item.id)}`} style={{ color: "inherit", textDecoration: "none" }}>{displayText}</Link>
+                  ) : (
+                    <span>{displayText}</span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        <p style={{ padding: "0.5rem 0.75rem", fontSize: "0.7rem", color: "rgba(255,255,255,0.4)" }}>↓ Scroll for more</p>
+      </div>
+    </div>
+  );
+}
+
+function NewsPanel({ items }: { items: { id: string; headline: string; date: string; relative?: string; slug?: string }[] }) {
+  return (
+    <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.1)", overflow: "hidden", marginTop: "0.75rem", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+      <div style={{ padding: "0.75rem 1rem", borderBottom: "1px solid rgba(255,255,255,0.1)", fontWeight: 700, fontSize: "0.9rem", flexShrink: 0 }}>News</div>
+      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "0.5rem", paddingBottom: "1.5rem" }}>
+        {items.length === 0 ? (
+          <p style={{ padding: "0.75rem", color: "rgba(255,255,255,0.5)", fontSize: "0.8rem" }}>—</p>
+        ) : (
+          <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+            {items.map((n) => (
+              <li key={n.id} style={{ padding: "0.4rem 0.5rem", borderBottom: "1px solid rgba(255,255,255,0.06)", fontSize: "0.8rem" }}>
+                <Link href={n.slug ? `/news/${n.slug}` : "#"} style={{ color: "rgba(255,255,255,0.9)", textDecoration: "none" }}>
+                  <span style={{ color: "#94a3b8", marginRight: "0.35rem" }}>{n.relative ?? n.date}</span>
+                  {n.headline}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+        <p style={{ padding: "0.5rem 0.5rem", fontSize: "0.7rem", color: "rgba(255,255,255,0.4)" }}>↓ Scroll for more</p>
+      </div>
+    </div>
+  );
+}
+
+function TopSection() {
+  const [stats, setStats] = useState<StatsLegacy | null>(null);
+  const [activities, setActivities] = useState<{ id?: string; text: string; at: string; kind?: string; loopTag?: string; categorySlug?: string }[]>([]);
+  const [activitySort, setActivitySort] = useState<ActivitySort>("new");
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+  const [categoriesList, setCategoriesList] = useState<{ pretty: { slug: string; label: string }[]; custom: string[] } | null>(null);
+  const [activitiesLoading, setActivitiesLoading] = useState(false);
+  const [trendingLoops, setTrendingLoops] = useState<TrendingLoopItem[]>([]);
+  const [news, setNews] = useState<{ id: string; headline: string; date: string; slug?: string }[]>([]);
+  useEffect(() => {
+    fetch("/api/activity/categories", { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).then(setCategoriesList).catch(() => {});
+  }, []);
+  useEffect(() => {
+    setActivitiesLoading(true);
+    const fetchAll = (showLoading = false) => {
+      if (showLoading) setActivitiesLoading(true);
+      const opts = { cache: "no-store" as RequestCache, headers: { Pragma: "no-cache" } };
+      fetch(`/api/stats?t=${Date.now()}`, opts).then((r) => (r.ok ? r.json() : null)).then((d) => d && setStats(d)).catch(() => {});
+      const catParam = categoryFilter ? `&category=${encodeURIComponent(categoryFilter)}` : "";
+      fetch(`/api/activity?sort=${activitySort === "new" ? "new" : activitySort}${catParam}&t=${Date.now()}`, opts)
+        .then((r) => (r.ok ? r.json() : { items: [] }))
+        .then((d) => { setActivities(d.items || []); setActivitiesLoading(false); })
+        .catch(() => setActivitiesLoading(false));
+      fetch("/api/loops/trending?t=" + Date.now(), opts).then((r) => (r.ok ? r.json() : { loops: [] })).then((d) => setTrendingLoops(d.loops || [])).catch(() => {});
+      fetch("/api/news", opts).then((r) => (r.ok ? r.json() : { items: [] })).then((d) => setNews(d.items || [])).catch(() => {});
+    };
+    fetchAll(false);
+    const t = setInterval(() => fetchAll(false), LIVE_POLL_MS);
+    return () => clearInterval(t);
+  }, [activitySort, categoryFilter]);
+  return (
+    <section id="top" style={{ background: "linear-gradient(180deg, #0a0a0a 0%, #111 100%)", color: "rgba(255,255,255,0.9)", paddingBottom: "1.5rem" }}>
+      <HeadlineSection stats={stats} />
+      <div className="top-section-grid" style={{ maxWidth: "80rem", margin: "0 auto", padding: "1.25rem 1.5rem", display: "grid", gridTemplateColumns: "1fr 260px 260px", gap: "1.25rem", alignItems: "start" }}>
+        {/* Pane 1: Sandbox (activities) */}
+        <div style={{ minWidth: 0 }}>
+          <SandboxActivities
+            activities={activities}
+            sort={activitySort}
+            onSortChange={setActivitySort}
+            categoryFilter={categoryFilter}
+            onCategoryFilterChange={setCategoryFilter}
+            categoriesList={categoriesList}
+            loading={activitiesLoading}
+          />
+        </div>
+        {/* Pane 2: Loop of the day + Trending Loops — same height as sandbox */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", minWidth: 0, height: "380px" }}>
+          <LoopOfTheDay loop={trendingLoops[0] ?? null} />
+          <TrendingLoops loops={trendingLoops} />
+        </div>
+        {/* Pane 3: Live + News — same height as sandbox, shared column */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", minWidth: 0, height: "380px" }}>
+          <LiveBox activities={activities} />
+          <NewsPanel items={news} />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+
 type RawActivity = { id?:string; title?:string; body?:string; loop_tag?:string; loopTag?:string; category_slug?:string; categorySlug?:string; created_at?:string; points?:number; comments_count?:number; commentsCount?:number; verified?:boolean; };
 
 export default function Home() {
@@ -372,8 +787,8 @@ export default function Home() {
     <>
       <FontLoader/>
       <Nav/>
+      <TopSection/>
       <Hero stats={stats}/>
-      <StatsBar stats={stats}/>
       <LiveFeed feed={feed} trending={trending}/>
       <LoopToLoop/>
       <WhatLoopDoes/>
