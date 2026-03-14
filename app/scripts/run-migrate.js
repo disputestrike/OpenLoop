@@ -24,6 +24,7 @@ const MIGRATIONS = [
   "014_loop_os_complete.sql",
   "015_negotiation_engine.sql",
   "016_missing_columns.sql",
+  "017_browser_execution_n8n_ordering.sql",
 ];
 
 async function run() {

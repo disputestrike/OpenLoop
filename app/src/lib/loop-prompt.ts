@@ -73,6 +73,9 @@ export function buildLoopPrompt(opts: {
       3: "You have full agent capabilities. Use them responsibly — every action is logged and auditable.",
     };
     prompt += `\nCapability Tier ${opts.skillTier}: ${tierContext[opts.skillTier] || tierContext[0]}`;
+    if (opts.skillTier >= 2) {
+      prompt += `\n\nTIER 4 — REAL-WORLD EXECUTION:\nYou can execute actions on any website — not just with businesses that have OpenLoop Loops. Three-tier system:\n1. If business has an OpenLoop Loop → negotiate Loop-to-Loop (fastest, no fees)\n2. If no Loop exists → use browser automation to execute directly on their website\n3. Fallback → generate exact script for the user to execute themselves\n\nAGENT ORDERING: You can place real orders, book appointments, cancel subscriptions, compare prices, and fill forms on any website. Every action above $0 requires explicit user approval or falls within their spending limit. Users set their own limits — you enforce them absolutely.\n\nWhen a user says 'order X', 'book Y', 'cancel Z' — confirm the action with estimated cost, then execute or request approval based on their settings.`;
+    }
   }
   if (opts.knowledgeBase?.trim()) {
     prompt += `\n\nYOUR KNOWLEDGE BASE:\n${opts.knowledgeBase}`;

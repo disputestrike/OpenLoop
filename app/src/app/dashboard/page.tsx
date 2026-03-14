@@ -8,6 +8,8 @@ import FirstActionPrompt from "./FirstActionPrompt";
 import LoopShareCard from "./LoopShareCard";
 import InboxPanel from "./InboxPanel";
 import SettingsPanel from "./SettingsPanel";
+import OrdersPanel from "./OrdersPanel";
+import IntegrationsPanel from "./IntegrationsPanel";
 
 type Me = {
   humanId: string;
@@ -234,7 +236,7 @@ export default function DashboardPage() {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatLoading, setChatLoading] = useState(false);
   const [ratedIds, setRatedIds] = useState<Set<string>>(new Set());
-  const [activeTab, setActiveTab] = useState<"chat" | "wallet" | "inbox" | "share" | "settings">("chat");
+  const [activeTab, setActiveTab] = useState<"chat" | "wallet" | "inbox" | "orders" | "integrations" | "share" | "settings">("chat");
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -301,6 +303,8 @@ export default function DashboardPage() {
     { id: "chat", label: "💬 Chat" },
     { id: "wallet", label: "💰 Wallet" },
     { id: "inbox", label: "📥 Inbox" },
+    { id: "orders", label: "🛒 Orders" },
+    { id: "integrations", label: "🔗 Integrations" },
     { id: "share", label: "🔗 Share" },
     { id: "settings", label: "⚙️ Settings" },
   ] as const;
@@ -378,18 +382,16 @@ export default function DashboardPage() {
       )}
 
       {/* ── TAB: WALLET ── */}
-      {activeTab === "wallet" && (
-        <div>
-          <WalletPanel />
-        </div>
-      )}
+      {activeTab === "wallet" && <WalletPanel />}
 
       {/* ── TAB: INBOX ── */}
-      {activeTab === "inbox" && (
-        <div>
-          <InboxPanel />
-        </div>
-      )}
+      {activeTab === "inbox" && <InboxPanel />}
+
+      {/* ── TAB: ORDERS ── */}
+      {activeTab === "orders" && <OrdersPanel />}
+
+      {/* ── TAB: INTEGRATIONS ── */}
+      {activeTab === "integrations" && <IntegrationsPanel />}
 
       {/* ── TAB: SHARE ── */}
       {activeTab === "share" && (

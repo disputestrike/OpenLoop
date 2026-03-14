@@ -9,10 +9,47 @@ const MODEL = "llama3.1-8b";
 const MAX_HISTORY = 20;
 const MAX_MESSAGE_LENGTH = 4000;
 
-function parseIntent(message: string): { type: "negotiate"|"find_loop"|"general"; businessName?: string; subject?: string; currentValue?: string; targetValue?: string } {
+function parseIntent(message: string): {
+  type: "negotiate" | "order" | "browse" | "find_loop" | "general";
+  businessName?: string; subject?: string; currentValue?: string; targetValue?: string;
+  orderType?: string; estimatedAmount?: number;
+} {
   const lower = message.toLowerCase();
+
+  // Order intent: "buy X", "order X", "book X", "cancel X subscription"
+  const isOrder = /(?:buy|order|purchase|book|reserve|cancel|subscribe to|sign up for)\s+(?:me\s+)?(.{3,50})/i.test(message)
+    || /(?:find|get)\s+(?:me\s+)?(?:the\s+)?(?:best|cheapest|lowest)\s+(?:price|deal|rate)\s+(?:for|on)\s+(.{3,40})/i.test(message);
+
+  if (isOrder) {
+    const bizMatch = message.match(/(?:on|from|at|with|via)\s+(\w+(?:\s+\w+)?)/i);
+    const orderTypeMatch = /^(?:buy|order|purchase)/i.test(message) ? "purchase"
+      : /^(?:book|reserve)/i.test(message) ? "booking"
+      : /^cancel/i.test(message) ? "cancellation"
+      : "purchase";
+    const amountMatch = message.match(/\$[\d,]+(?:\.\d{2})?/);
+    return {
+      type: "order",
+      businessName: bizMatch?.[1] || "",
+      subject: message.slice(0, 80),
+      orderType: orderTypeMatch,
+      estimatedAmount: amountMatch ? parseFloat(amountMatch[0].replace(/[$,]/g, "")) * 100 : 0,
+    };
+  }
+
+  // Browse intent: "check X", "look up X on Y", "find X price on Y"
+  const isBrowse = /(?:check|look up|search|find|browse|visit|go to)\s+(?:the\s+)?(?:\w+\.com|.{3,40})\s+(?:for|and|to)/i.test(message)
+    || /what(?:'s| is)\s+(?:the\s+)?(?:price|cost|rate|deal)\s+(?:of|for|on)\s+(.{3,50})/i.test(message);
+
+  if (isBrowse) {
+    const urlMatch = message.match(/(\w+\.com)/i);
+    const bizMatch = message.match(/(?:on|at|from)\s+(\w+(?:\s+\w+)?)/i);
+    return { type: "browse", businessName: urlMatch?.[1] || bizMatch?.[1] || "", subject: message.slice(0, 80) };
+  }
+
+  // Negotiate intent
   const isNeg = /(?:lower|reduce|negotiate|cut|decrease|get.*better.*(?:rate|deal|price)|save.*on|talk to|contact.*about)\s+(?:my\s+)?(?:.*?)(?:bill|rate|subscription|plan|payment|loop)/i.test(message)
     || /negotiate\s+(?:with\s+)?@?(\w+)/i.test(message);
+
   if (isNeg) {
     const biz = message.match(/(?:my\s+)?(\w+(?:cast|t&t|flix|tel|mobile|wireless|insurance|bank|energy|electric|gas|water|gym|spotify|apple|amazon|google|microsoft|comcast|netflix|hulu|verizon|tmobile|att))/i)?.[1]
       || message.match(/(?:talk to|contact|message|negotiate with)\s+@?(\w+)/i)?.[1]
@@ -21,6 +58,7 @@ function parseIntent(message: string): { type: "negotiate"|"find_loop"|"general"
     const subj = message.match(/(?:my\s+)?(\w+\s+(?:bill|rate|subscription|plan|service))/i)?.[1] || (biz ? `${biz} bill` : "service");
     return { type: "negotiate", businessName: biz, subject: subj, currentValue: amounts[0]||"", targetValue: amounts[1]||"" };
   }
+
   const findM = message.match(/(?:find|search for|look up|is)\s+@?(\w+)\s+(?:on openloop|loop)?/i) || message.match(/@(\w+)/);
   if (findM) return { type: "find_loop", businessName: findM[1] };
   return { type: "general" };
@@ -60,7 +98,45 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ reply, intent: "find_loop" });
   }
 
-  // Negotiation
+  // Order intent — three-tier: L2L → browser → script
+  if (intent.type === "order" && intent.businessName && (loop?.skill_tier||0) >= 2) {
+    const { parseActionIntent, executeBrowserAction, checkAuthorization } = await import("@/lib/browser-engine");
+    const businessLoop = await findBusinessLoop(query, intent.businessName);
+
+    if (businessLoop) {
+      // Tier 1: Loop-to-Loop
+      const negResult = await runLoopToLoopNegotiation({
+        buyerLoopId: loopId, businessSearchTerm: intent.businessName,
+        subject: intent.subject || `${intent.businessName} order`,
+        currentValue: intent.currentValue || "", targetValue: intent.targetValue || "",
+        context: kb.slice(0, 200),
+      });
+      const reply = `🤝 [Tier 1 — Loop-to-Loop] ${negResult.outcome === "deal" ? `Deal: ${negResult.agreedValue}` : negResult.fallbackScript || "Impasse — trying another approach"}`;
+      return NextResponse.json({ reply, intent: "order", tier: 1 });
+    }
+
+    // Tier 2: Browser execution
+    const browserAction = parseActionIntent(userMessage);
+    if (browserAction) {
+      const auth = await checkAuthorization({ loopId, estimatedCostCents: browserAction.estimatedCostCents, actionType: browserAction.type });
+      if (!auth.authorized) {
+        const reply = `⚠️ ${auth.reason}`;
+        await query("INSERT INTO chat_messages (loop_id, role, content) VALUES ($1, 'assistant', $2)", [loopId, reply]);
+        return NextResponse.json({ reply, intent: "order", requiresSetup: true });
+      }
+      const result = await executeBrowserAction({ loopId, action: browserAction });
+      const reply = result.requiresApproval
+        ? `🌐 [Tier 2 — Browser] ${result.outcome}\n\nApprove in your dashboard to execute.`
+        : result.success ? `🌐 [Tier 2 — Browser] ✅ ${result.outcome}` : `📋 [Tier 3 — Script] ${result.outcome}`;
+      return NextResponse.json({ reply, intent: "order", tier: result.success ? 2 : 3, requiresApproval: result.requiresApproval, executionId: result.executionId });
+    }
+
+    // Tier 3: Script fallback
+    const reply = `📋 [Tier 3 — Script] @${intent.businessName} isn't on OpenLoop and the browser couldn't complete this. Here's exactly what to do: ${intent.subject || userMessage}`;
+    return NextResponse.json({ reply, intent: "order", tier: 3 });
+  }
+
+  // Negotiation — three-tier
   if (intent.type === "negotiate" && intent.businessName && (loop?.skill_tier||0) >= 1) {
     const negResult = await runLoopToLoopNegotiation({
       buyerLoopId: loopId,
