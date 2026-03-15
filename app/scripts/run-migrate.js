@@ -36,6 +36,11 @@ const MIGRATIONS = [
   "026_categories_system.sql",
   "027_add_parent_loop_for_subagents.sql",
   "028_follows_system.sql",
+  "029_protocol_task_events.sql",
+  "030_persistent_memory.sql",
+  "031_escrow.sql",
+  "032_event_bus_outbox.sql",
+  "033_llm_training_ecosystem.sql",
 ];
 
 async function run() {

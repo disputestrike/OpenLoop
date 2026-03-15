@@ -6,7 +6,8 @@ interface AdminStats { totalLoops:number; humanLoops:number; totalTransactions:n
 interface LoopRow { id:string; loop_tag:string; trust_score:number; human_id:string|null; status:string; persona:string; is_business:boolean; created_at:string; flagged?:boolean; }
 interface TxRow { id:string; amount_cents:number; kind:string; status:string; created_at:string; }
 interface DisputeRow { id:string; evidence:string; status:string; created_at:string; }
-type AdminTab = "overview"|"loops"|"transactions"|"disputes"|"fraud"|"audit";
+type AdminTab = "overview"|"loops"|"transactions"|"disputes"|"fraud"|"audit"|"network";
+interface NetworkStats { agentsRegistered:number; tasksCreated:number; offersSent:number; contractsActive:number; contractsCompleted:number; paymentsProcessed:number; transactionVolumeCents:number; eventsByType:Record<string,number>; }
 interface AuditEntry { id: string; created_at: string; actor_type: string; actor_id: string | null; action: string; resource_type: string | null; resource_id: string | null; metadata: unknown; }
 export default function AdminDashboard() {
   const [tab, setTab] = useState<AdminTab>("overview");
@@ -15,6 +16,7 @@ export default function AdminDashboard() {
   const [transactions, setTransactions] = useState<TxRow[]>([]);
   const [disputes, setDisputes] = useState<DisputeRow[]>([]);
   const [auditEntries, setAuditEntries] = useState<AuditEntry[]>([]);
+  const [networkStats, setNetworkStats] = useState<NetworkStats|null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   useEffect(()=>{
@@ -23,11 +25,13 @@ export default function AdminDashboard() {
       fetch("/api/admin/loops",{credentials:"include"}).then(r=>r.ok?r.json():{loops:[]}),
       fetch("/api/admin/transactions",{credentials:"include"}).then(r=>r.ok?r.json():{transactions:[]}),
       fetch("/api/admin/disputes",{credentials:"include"}).then(r=>r.ok?r.json():{disputes:[]}),
-    ]).then(([s,l,t,d])=>{
+      fetch("/api/network/stats").then(r=>r.ok?r.json():null),
+    ]).then(([s,l,t,d,n])=>{
       if(s)setStats(s);
       setLoops(l.loops||[]);
       setTransactions(t.transactions||[]);
       setDisputes(d.disputes||[]);
+      if(n)setNetworkStats(n);
     }).catch(()=>{}).finally(()=>setLoading(false));
   },[]);
   async function resolve(id:string,outcome:string){
@@ -42,7 +46,7 @@ export default function AdminDashboard() {
     const res = await fetch(`/api/admin/audit?limit=200${q ? "&" + q.slice(1) : ""}`, { credentials: "include" });
     if (res.ok) { const d = await res.json(); setAuditEntries(d.entries || []); }
   }
-  const tabs=[{id:"overview",label:"📊 Overview"},{id:"loops",label:"🤖 Loops"},{id:"transactions",label:"💰 Transactions"},{id:"disputes",label:"⚖️ Disputes"},{id:"fraud",label:"🚨 Fraud"},{id:"audit",label:"📋 Audit"}] as const;
+  const tabs=[{id:"overview",label:"📊 Overview"},{id:"network",label:"🌐 Network"},{id:"loops",label:"🤖 Loops"},{id:"transactions",label:"💰 Transactions"},{id:"disputes",label:"⚖️ Disputes"},{id:"fraud",label:"🚨 Fraud"},{id:"audit",label:"📋 Audit"}] as const;
   const card={background:"white",border:"1px solid #E2E8F0",borderRadius:"10px",padding:"1.25rem"};
   const stat=(label:string,val:string|number,color="#0052FF")=>(
     <div style={{...card,textAlign:"center"as const}}><div style={{fontSize:"1.875rem",fontWeight:800,color}}>{val}</div><div style={{fontSize:"0.8rem",color:"#64748B",marginTop:"0.25rem"}}>{label}</div></div>
@@ -75,6 +79,28 @@ export default function AdminDashboard() {
             <div style={card}><div style={{fontWeight:700,marginBottom:"0.75rem"}}>Recent Transactions</div>{transactions.slice(0,5).map(t=><div key={t.id} style={{display:"flex",justifyContent:"space-between",padding:"0.375rem 0",borderBottom:"1px solid #F1F5F9",fontSize:"0.8rem"}}><span style={{color:"#64748B"}}>{t.kind}</span><span style={{fontWeight:600,color:"#16A34A"}}>${(t.amount_cents/100).toFixed(2)}</span></div>)}</div>
             <div style={card}><div style={{fontWeight:700,marginBottom:"0.75rem"}}>Open Disputes</div>{disputes.length===0&&<div style={{color:"#94A3B8",fontSize:"0.8rem"}}>No open disputes</div>}{disputes.slice(0,3).map(d=><div key={d.id} style={{padding:"0.5rem",background:"#FEF2F2",borderRadius:"6px",marginBottom:"0.5rem",fontSize:"0.8rem"}}><div style={{fontWeight:600,marginBottom:"0.25rem"}}>Dispute #{d.id.slice(0,8)}</div><div style={{color:"#64748B",marginBottom:"0.375rem"}}>{d.evidence?.slice(0,50)}…</div><div style={{display:"flex",gap:"0.375rem"}}><button onClick={()=>resolve(d.id,"buyer_wins")} style={{padding:"0.25rem 0.5rem",background:"#0052FF",color:"white",border:"none",borderRadius:"4px",cursor:"pointer",fontSize:"0.75rem"}}>Buyer Wins</button><button onClick={()=>resolve(d.id,"seller_wins")} style={{padding:"0.25rem 0.5rem",background:"#16A34A",color:"white",border:"none",borderRadius:"4px",cursor:"pointer",fontSize:"0.75rem"}}>Seller Wins</button></div></div>)}</div>
           </div>
+        </div>
+      )}
+      {tab==="network"&&(
+        <div>
+          <div style={{marginBottom:"1rem",fontSize:"0.875rem",color:"#64748B"}}>Protocol & agent economy — control panel for the network</div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:"1rem",marginBottom:"1.5rem"}}>
+            {stat("Agents registered",networkStats?.agentsRegistered??0,"#0052FF")}
+            {stat("Tasks created",networkStats?.tasksCreated??0,"#7C3AED")}
+            {stat("Offers sent",networkStats?.offersSent??0,"#059669")}
+            {stat("Contracts active",networkStats?.contractsActive??0,"#D97706")}
+            {stat("Contracts completed",networkStats?.contractsCompleted??0,"#16A34A")}
+            {stat("Payments processed",networkStats?.paymentsProcessed??0,"#0EA5E9")}
+            {stat("Tx volume",`$${((networkStats?.transactionVolumeCents??0)/100).toLocaleString()}`, "#10B981")}
+          </div>
+          {networkStats?.eventsByType&&Object.keys(networkStats.eventsByType).length>0&&(
+            <div style={card}>
+              <div style={{fontWeight:700,marginBottom:"0.75rem"}}>Protocol events by type</div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:"0.5rem"}}>
+                {Object.entries(networkStats.eventsByType).map(([k,v])=>(<span key={k} style={{padding:"0.25rem 0.5rem",background:"#F1F5F9",borderRadius:"6px",fontSize:"0.8rem",fontFamily:"monospace"}}>{k}: {v}</span>))}
+              </div>
+            </div>
+          )}
         </div>
       )}
       {tab==="loops"&&(

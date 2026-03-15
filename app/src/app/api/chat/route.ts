@@ -10,6 +10,19 @@ const MODEL = "llama3.1-8b";
 const MAX_HISTORY = 20;
 const MAX_MESSAGE_LENGTH = 4000;
 
+/** Dual-write to conversation_logs for LLM training pipeline (table may not exist yet). */
+function writeConversationLog(
+  q: typeof query,
+  loopId: string,
+  role: "user" | "assistant" | "system",
+  message: string
+): void {
+  q(
+    "INSERT INTO conversation_logs (loop_id, message, role) VALUES ($1, $2, $3)",
+    [loopId, message.slice(0, 65535), role]
+  ).catch(() => {});
+}
+
 function parseIntent(message: string): {
   type: "negotiate" | "order" | "browse" | "find_loop" | "general";
   businessName?: string; subject?: string; currentValue?: string; targetValue?: string;
@@ -89,6 +102,7 @@ export async function POST(req: NextRequest) {
   const memory = memoryRes.rows.map(r => `[${r.memory_type}] ${r.content}`).join("\n");
 
   await query("INSERT INTO chat_messages (loop_id, role, content) VALUES ($1, 'user', $2)", [loopId, userMessage]);
+  writeConversationLog(query, loopId, "user", userMessage);
 
   const intent = parseIntent(userMessage);
 
@@ -211,6 +225,7 @@ export async function POST(req: NextRequest) {
   const logRes = await query<{id:string}>("INSERT INTO llm_interactions (loop_id, kind, prompt, response, source) VALUES ($1, 'chat', $2, $3, 'openloop_app') RETURNING id", [loopId, userMessage, assistantContent.slice(0,8000)]).catch(()=>({rows:[]}));
   const interactionId = logRes.rows[0]?.id ?? null;
   await query("INSERT INTO chat_messages (loop_id, role, content, llm_interaction_id) VALUES ($1, 'assistant', $2, $3)", [loopId, assistantContent, interactionId]);
+  writeConversationLog(query, loopId, "assistant", assistantContent);
   extractAndSaveMemory(loopId, userMessage, assistantContent).catch((e: unknown) => { if (process.env.NODE_ENV !== "production") console.warn("[db silent]", e); });
   return NextResponse.json({ reply: assistantContent, interactionId: interactionId??undefined });
 }

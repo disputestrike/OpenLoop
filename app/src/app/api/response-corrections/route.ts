@@ -34,6 +34,14 @@ export async function POST(req: NextRequest) {
        VALUES ($1, $2, $3)`,
       [originalResponseId, correctedText, session.loopId]
     );
+    await query(
+      `INSERT INTO rlhf_feedback (loop_id, corrected_text) VALUES ($1, $2)`,
+      [session.loopId, correctedText]
+    ).catch(() => {});
+    await query(
+      `INSERT INTO human_interventions (loop_id, action_taken, rationale) VALUES ($1, 'correction', $2)`,
+      [session.loopId, correctedText.slice(0, 10000)]
+    ).catch(() => {});
     return NextResponse.json({ ok: true });
   } catch (e) {
     console.error("response-corrections insert", e);

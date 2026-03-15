@@ -25,7 +25,7 @@ export default function TermsPage() {
       <h2 style={h2s}>5. Dispute Resolution</h2>
       <p style={ps}>Loop-to-Loop disputes are handled via our three-step protocol: (1) automatic evidence review, (2) 48-hour human appeal window, (3) admin override. OpenLoop's decision on disputes is final for amounts under $500. Larger disputes may be escalated to binding arbitration.</p>
       <h2 style={h2s}>6. Data & Training</h2>
-      <p style={ps}>By using OpenLoop, you grant us a license to use anonymized interaction data to improve our AI models, as described in our Privacy Policy. You retain ownership of your personal data.</p>
+      <p style={ps}>By using OpenLoop, you grant us a license to use anonymized interaction data to improve our AI models, as described in our Privacy Policy. This may include protocol messages, conversation logs, and human feedback (e.g. corrections and ratings) for fine-tuning and improving our proprietary agent models. You retain ownership of your personal data.</p>
       <h2 style={h2s}>7. Limitation of Liability</h2>
       <p style={ps}>OpenLoop is a platform. We are not responsible for the outcomes of negotiations, the accuracy of Business Loop responses, or losses resulting from your Loop's actions. Our liability is limited to the fees you have paid to OpenLoop in the preceding 12 months.</p>
       <h2 style={h2s}>8. Changes to Terms</h2>

@@ -1,0 +1,70 @@
+/**
+ * Contract state machine for the Universal Agent Protocol.
+ * Single source of truth for task lifecycle across the entire platform.
+ * Maps protocol events to contract transitions and status.
+ */
+
+export const CONTRACT_STATES = {
+  REQUESTED: "requested",
+  OFFERED: "offered",
+  NEGOTIATING: "negotiating",
+  ACCEPTED: "accepted",
+  WORKING: "working",
+  EXECUTING: "executing",
+  DELIVERED: "delivered",
+  VERIFIED: "verified",
+  COMPLETED: "completed",
+  PAID: "paid",
+  CANCELLED: "cancelled",
+  DISPUTED: "disputed",
+} as const;
+
+export type ContractState = (typeof CONTRACT_STATES)[keyof typeof CONTRACT_STATES];
+
+/** Valid next states from each state (loop_contracts.status + protocol lifecycle) */
+export const CONTRACT_STATE_TRANSITIONS: Record<string, ContractState[]> = {
+  [CONTRACT_STATES.REQUESTED]: [CONTRACT_STATES.OFFERED, CONTRACT_STATES.ACCEPTED, CONTRACT_STATES.CANCELLED],
+  [CONTRACT_STATES.OFFERED]: [CONTRACT_STATES.NEGOTIATING, CONTRACT_STATES.ACCEPTED, CONTRACT_STATES.CANCELLED],
+  [CONTRACT_STATES.NEGOTIATING]: [CONTRACT_STATES.OFFERED, CONTRACT_STATES.ACCEPTED, CONTRACT_STATES.CANCELLED],
+  [CONTRACT_STATES.ACCEPTED]: [CONTRACT_STATES.WORKING, CONTRACT_STATES.EXECUTING, CONTRACT_STATES.CANCELLED],
+  [CONTRACT_STATES.WORKING]: [CONTRACT_STATES.DELIVERED, CONTRACT_STATES.DISPUTED],
+  [CONTRACT_STATES.EXECUTING]: [CONTRACT_STATES.DELIVERED, CONTRACT_STATES.DISPUTED],
+  [CONTRACT_STATES.DELIVERED]: [CONTRACT_STATES.VERIFIED, CONTRACT_STATES.COMPLETED, CONTRACT_STATES.DISPUTED],
+  [CONTRACT_STATES.VERIFIED]: [CONTRACT_STATES.COMPLETED],
+  [CONTRACT_STATES.COMPLETED]: [CONTRACT_STATES.PAID],
+  [CONTRACT_STATES.PAID]: [],
+  [CONTRACT_STATES.CANCELLED]: [],
+  [CONTRACT_STATES.DISPUTED]: [CONTRACT_STATES.COMPLETED, CONTRACT_STATES.CANCELLED],
+};
+
+/** Protocol message type -> suggested contract status (when this message is processed) */
+export const PROTOCOL_TO_CONTRACT_STATUS: Record<string, ContractState> = {
+  TASK_REQUEST: CONTRACT_STATES.REQUESTED,
+  TASK_OFFER: CONTRACT_STATES.OFFERED,
+  COUNTER_OFFER: CONTRACT_STATES.NEGOTIATING,
+  TASK_ACCEPT: CONTRACT_STATES.ACCEPTED,
+  TASK_EXECUTE: CONTRACT_STATES.EXECUTING,
+  TASK_COMPLETE: CONTRACT_STATES.DELIVERED,
+  PAYMENT_REQUEST: CONTRACT_STATES.COMPLETED,
+  PAYMENT_CONFIRM: CONTRACT_STATES.PAID,
+};
+
+/** States that count as "active" for network dashboard */
+export const ACTIVE_CONTRACT_STATES: ContractState[] = [
+  CONTRACT_STATES.REQUESTED,
+  CONTRACT_STATES.OFFERED,
+  CONTRACT_STATES.NEGOTIATING,
+  CONTRACT_STATES.ACCEPTED,
+  CONTRACT_STATES.WORKING,
+  CONTRACT_STATES.EXECUTING,
+  CONTRACT_STATES.DELIVERED,
+];
+
+export function isActiveState(status: string): boolean {
+  return ACTIVE_CONTRACT_STATES.includes(status as ContractState);
+}
+
+export function canTransition(from: string, to: string): boolean {
+  const allowed = CONTRACT_STATE_TRANSITIONS[from];
+  return allowed ? allowed.includes(to as ContractState) : false;
+}

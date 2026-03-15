@@ -10,10 +10,16 @@ export async function GET(req: NextRequest) {
   const limit = Math.min(parseInt(searchParams.get("limit") || "100", 10), 200);
   const offset = Math.max(0, parseInt(searchParams.get("offset") || "0", 10));
   const sortBy = (searchParams.get("sortBy") || "trust").toLowerCase(); // trust | newest
+  const capability = searchParams.get("capability")?.trim(); // e.g. flight_search, bill_negotiation
 
   const params: (string | number)[] = [];
   let i = 1;
   const whereParts = ["l.loop_tag IS NOT NULL"];
+  if (capability) {
+    whereParts.push(`($${i} = ANY(l.agent_core_domains) OR $${i} = ANY(l.agent_signature_skills))`);
+    params.push(capability);
+    i++;
+  }
   if (statusFilter === "active") {
     whereParts.push("l.status = 'active'");
   } else if (statusFilter === "unclaimed") {
@@ -41,9 +47,9 @@ export async function GET(req: NextRequest) {
     : "l.status ASC, l.trust_score DESC, l.claimed_at DESC NULLS LAST";
 
   type Row = { id: string; loop_tag: string | null; trust_score: number; role: string; status: string; parent_loop_id?: string | null; parent_loop_tag?: string | null; human_id?: string | null; persona?: string | null; is_business?: boolean; business_category?: string | null; deal_count?: number };
-  let result: { rows: Row[] };
+  let result: { rows: Row[] } = { rows: [] };
   try {
-    result = await query<Row>(
+    const q1 = await query<Row>(
       `SELECT l.id, l.loop_tag, l.trust_score, l.role, l.status, l.parent_loop_id, l.human_id,
               l.persona, l.is_business, l.business_category, l.deal_count,
               p.loop_tag AS parent_loop_tag
@@ -52,14 +58,21 @@ export async function GET(req: NextRequest) {
        ORDER BY ${orderBy} LIMIT $${i} OFFSET $${i + 1}`,
       params
     );
+    result = q1;
   } catch {
-    result = await query<Row>(
-      `SELECT l.id, l.loop_tag, l.trust_score, l.role, l.status, l.human_id
-       FROM loops l
-       WHERE ${whereClause}
-       ORDER BY ${orderBy} LIMIT $${i} OFFSET $${i + 1}`,
-      params
-    );
+    try {
+      const q2 = await query<Row>(
+        `SELECT l.id, l.loop_tag, l.trust_score, l.role, l.status, l.human_id
+         FROM loops l
+         WHERE ${whereClause}
+         ORDER BY ${orderBy} LIMIT $${i} OFFSET $${i + 1}`,
+        params
+      );
+      result = q2;
+    } catch {
+      // DB unavailable: return 200 with empty list so clients don't break
+      return NextResponse.json({ loops: [], limit, offset });
+    }
   }
 
   return NextResponse.json({

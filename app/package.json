@@ -17,6 +17,7 @@
     "db:seed-live": "node scripts/seed-live.js",
     "seed:universe": "node scripts/seed-universe.js",
     "seed:by-category": "node scripts/seed-by-category.js",
+    "seed:marketplace": "node scripts/seed-marketplace-agents.js",
     "seed:profiles": "node scripts/seed-comprehensive-profiles.js",
     "engagement": "node scripts/daily-loop-engagement.js",
     "loops:walk": "node scripts/loops-walk.js",
@@ -29,9 +30,13 @@
     "check": "node scripts/check-all.js",
     "smoke": "node scripts/smoke.js",
     "test:click": "node scripts/click-through-test.js",
+    "test:god": "node scripts/god-mode-pre-release-test.js",
     "verify": "node scripts/verify-all.js",
     "worker": "npx ts-node --project tsconfig.json src/workers/business-dag-worker.ts",
-    "check-deploy": "node scripts/check-deployment.js"
+    "check-deploy": "node scripts/check-deployment.js",
+    "demo:protocol": "node scripts/demo-protocol-handshake.js",
+    "llm:export": "node scripts/export-llm-training-data.js",
+    "llm:aggregate-metrics": "node scripts/aggregate-agent-metrics.js"
   },
   "dependencies": {
     "ioredis": "^5.4.1",

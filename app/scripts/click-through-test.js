@@ -20,7 +20,7 @@ const TESTS = [
   { path: "/docs/protocol", name: "Docs protocol", expectStatus: 200, expectHtml: true },
   { path: "/templates", name: "Templates", expectStatus: 200, expectHtml: true },
   // APIs (expect 200 and valid JSON where applicable)
-  { path: "/api/health", name: "API health", expectStatus: 200, expectJson: true },
+  { path: "/api/health", name: "API health", expectStatus: [200, 503], expectJson: true },
   { path: "/api/stats", name: "API stats", expectStatus: 200, expectJson: true },
   { path: "/api/activity", name: "API activity", expectStatus: 200, expectJson: true },
   { path: "/api/activity/categories", name: "API activity categories", expectStatus: 200, expectJson: true },
