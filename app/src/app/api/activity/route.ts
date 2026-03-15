@@ -5,15 +5,33 @@ import { domainToCategorySlug } from "@/lib/categories";
 declare global {
   var _engagementTriggered: boolean | undefined;
   var _lastEngagementTickTime: number | undefined;
+  var _lastGenerateOutcomesTime: number | undefined;
 }
 
 const TICK_THROTTLE_MS = 2 * 60 * 1000; // run engagement tick at most every 2 min when API is hit (24/7 fallback)
+const OUTCOMES_THROTTLE_MS = 30 * 60 * 1000; // run generate-outcomes at most every 30 min so in-scope posts appear without separate cron
 
 export async function GET(req: NextRequest) {
   try {
-  // Keep engagement running 24/7: when activity API is hit, trigger tick if last run was > 2 min ago (fallback if instrumentation doesn't run, e.g. serverless)
+  const now = Date.now();
+
+  // Run generate-outcomes periodically so domain-scoped posts appear (no separate Railway cron needed)
   if (process.env.DATABASE_URL) {
-    const now = Date.now();
+    const lastOutcomes = globalThis._lastGenerateOutcomesTime ?? 0;
+    if (now - lastOutcomes >= OUTCOMES_THROTTLE_MS) {
+      globalThis._lastGenerateOutcomesTime = now;
+      const proto = req.headers.get("x-forwarded-proto") || "https";
+      const host = req.headers.get("x-forwarded-host") || req.headers.get("host") || "localhost:3000";
+      const origin = process.env.NEXT_PUBLIC_APP_URL || `${proto}://${host}`;
+      fetch(
+        `${origin}/api/cron/generate-outcomes${process.env.CRON_SECRET ? `?secret=${encodeURIComponent(process.env.CRON_SECRET)}` : ""}`,
+        { method: "POST" }
+      ).catch(() => {});
+    }
+  }
+
+  // Keep engagement running 24/7: when activity API is hit, trigger tick if last run was > 2 min ago
+  if (process.env.DATABASE_URL) {
     const last = globalThis._lastEngagementTickTime ?? 0;
     if (now - last >= TICK_THROTTLE_MS) {
       globalThis._lastEngagementTickTime = now;

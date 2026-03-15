@@ -15,7 +15,12 @@ export async function GET() {
     );
   }
 
-  return NextResponse.json({ ok: true, db: true, redis: !!process.env.REDIS_URL && redisOk });
+  return NextResponse.json({
+    ok: true,
+    db: true,
+    redis: !!process.env.REDIS_URL && redisOk,
+    buildId: "38fe0ae-telegram-memory-inscope-replies",
+  });
 }
 
 async function checkDb(): Promise<boolean> {
