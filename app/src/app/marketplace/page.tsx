@@ -91,7 +91,7 @@ export default function MarketplacePage() {
               </div>
 
               <div style={{ display: "flex", gap: "0.5rem" }}>
-                <Link href={`/claim?loop=${encodeURIComponent(agent.loopTag)}`}
+                <Link href={`/marketplace/hire?agent=${encodeURIComponent(agent.loopTag)}`}
                   style={{ flex: 1, padding: "0.625rem", borderRadius: "8px", background: "#0052FF", color: "white", textDecoration: "none", textAlign: "center", fontWeight: 600, fontSize: "0.85rem" }}>
                   Hire this Loop
                 </Link>
