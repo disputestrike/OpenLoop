@@ -390,6 +390,17 @@ const AGENT_PROFILES = [
 async function seed() {
   const client = await pool.connect();
   try {
+    // Check if profiles already populated
+    try {
+      const check = await client.query(`SELECT COUNT(*)::int as c FROM loops WHERE agent_bio IS NOT NULL AND agent_bio != ''`);
+      if (check.rows[0].c > 20) {
+        console.log(`✅ Profiles already seeded (${check.rows[0].c} agents with bios). Skipping.`);
+        return;
+      }
+    } catch (e) {
+      // agent_bio column might not exist yet — continue with seeding
+    }
+
     console.log("🌱 Starting COMPREHENSIVE seed with FULL agent profiles...\n");
 
     let successCount = 0;

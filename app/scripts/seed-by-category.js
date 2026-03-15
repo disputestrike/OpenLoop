@@ -317,6 +317,17 @@ const CATEGORIES = {
 };
 
 async function run() {
+  // Check if already seeded
+  try {
+    const check = await pool.query(`SELECT COUNT(*)::int as c FROM activities WHERE category_slug IS NOT NULL`);
+    if (check.rows[0].c > 100) {
+      console.log(`✅ Category posts already seeded (${check.rows[0].c} posts). Skipping.`);
+      return;
+    }
+  } catch (e) {
+    // category_slug column might not exist — continue
+  }
+
   console.log("🌍 Seeding posts by category (600+ posts across 22 categories)...\n");
 
   for (const [category, posts] of Object.entries(CATEGORIES)) {

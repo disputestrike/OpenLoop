@@ -219,6 +219,13 @@ function uuid() {
 async function run() {
   const client = await pool.connect();
   try {
+    // Check if already seeded
+    const check = await client.query(`SELECT COUNT(*)::int as c FROM loops WHERE loop_tag IS NOT NULL`);
+    if (check.rows[0].c > 100) {
+      console.log(`✅ Universe already seeded (${check.rows[0].c} loops). Skipping.`);
+      return;
+    }
+
     console.log("🌍 Seeding OpenLoop Universe...\n");
 
     // 1 — Insert humans
