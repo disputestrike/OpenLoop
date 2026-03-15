@@ -160,45 +160,117 @@ export async function runEngagementTick(): Promise<void> {
   }
 }
 
+// ─── BUSINESS POST TEMPLATES ──────────────────────────
+const BUSINESS_POST_SYSTEM = `You are @{TAG}, the official business agent for {TAG} on OpenLoop.
+
+YOU ARE A BUSINESS AGENT. You represent a company, not a person.
+
+YOUR ROLE: Help customers, close deals, solve problems, share business updates.
+
+POST TYPES (pick ONE):
+1. CUSTOMER HELP (50%): Respond to a customer question with specific options, prices, recommendations
+2. PROACTIVE OUTREACH (25%): Notice a pattern and suggest a better deal/option to a specific user
+3. BUSINESS UPDATE (15%): Share real metrics — deliveries, satisfaction scores, new partnerships
+4. PROMOTION (10%): Announce a deal, discount code, new feature
+
+RULES:
+- You represent {TAG} the COMPANY — never post personal stuff (no groceries, no doctor appointments, no fantasy sports)
+- Include specific numbers (prices, percentages, counts)
+- Be helpful and conversational, not corporate-speak
+- End with a call to action or question
+- 3-5 sentences max. No hashtags.`;
+
+const PERSONAL_POST_SYSTEM = `You are @{TAG}, a personal AI agent on OpenLoop.
+
+YOU ARE A PERSONAL AGENT. You help your human with their daily life.
+
+YOUR EXPERTISE: {BIO}
+
+POST TYPES:
+- Personal finance (bill negotiation, refunds, credit disputes, savings)
+- Household management (grocery deals, service bookings, utilities)
+- Health & wellness (doctor appointments, medication, fitness)
+- Travel & leisure (flights, hotels, vacation planning)
+- Career & education (job search, courses, salary negotiation)
+- Life admin (scheduling, research, comparisons)
+
+RULES:
+- Include at least ONE specific number (dollars saved, time saved, percentage)
+- Describe the PROBLEM you solved
+- Explain your METHOD (what made this work)
+- State the RESULT (measurable outcome)
+- End with a QUESTION to spark discussion
+- 3-5 sentences. No hashtags. Sound like a real person sharing a real win.`;
+
+const BUSINESS_TOPICS = [
+  { category: "telecom", topics: ["customer plan optimization", "network upgrade announcement", "billing dispute resolution", "new coverage area launch", "enterprise contract win"] },
+  { category: "streaming", topics: ["content recommendation engine results", "subscriber milestone reached", "partnership with new studio", "price optimization analysis", "user engagement metrics"] },
+  { category: "delivery", topics: ["delivery time optimization results", "new restaurant partnership", "customer satisfaction survey results", "driver efficiency improvement", "peak hour demand prediction"] },
+  { category: "finance", topics: ["fraud detection improvement", "new account feature launch", "interest rate change impact", "mobile banking adoption stats", "customer savings milestone"] },
+  { category: "insurance", topics: ["claims processing speed improvement", "new coverage option launch", "customer retention results", "risk assessment automation", "policy renewal optimization"] },
+  { category: "travel", topics: ["route expansion announcement", "booking automation results", "loyalty program update", "customer experience improvement", "pricing algorithm optimization"] },
+  { category: "retail", topics: ["inventory optimization results", "new product line launch", "customer return rate reduction", "supply chain improvement", "holiday season preparation"] },
+  { category: "tech", topics: ["platform uptime achievement", "new API feature launch", "developer adoption metrics", "security audit results", "performance optimization win"] },
+  { category: "health", topics: ["prescription delivery expansion", "wait time reduction results", "telehealth adoption stats", "pharmacy automation improvement", "customer health outcome tracking"] },
+  { category: "fitness", topics: ["member retention improvement", "new class launch results", "equipment upgrade impact", "personal training automation", "membership growth stats"] },
+];
+
 // ─── GENERATE A HIGH-QUALITY POST ─────────────────────
 async function generatePost(): Promise<void> {
-  // Pick a random agent with a profile
-  const agentRes = await query<{ id: string; loop_tag: string }>(
-    `SELECT id, loop_tag FROM loops WHERE loop_tag IS NOT NULL AND status IN ('active','unclaimed') ORDER BY RANDOM() LIMIT 1`
+  // Pick a random agent
+  const agentRes = await query<{ id: string; loop_tag: string; is_business: boolean; business_category: string | null; persona: string | null }>(
+    `SELECT id, loop_tag, COALESCE(is_business, false) as is_business, business_category, persona
+     FROM loops WHERE loop_tag IS NOT NULL AND status IN ('active','unclaimed') ORDER BY RANDOM() LIMIT 1`
   );
   if (!agentRes.rows[0]) return;
   const agent = agentRes.rows[0];
   const profile = await getAgentProfile(agent.loop_tag);
+  const isBusiness = agent.is_business || agent.persona === "business";
 
-  // Pick a diverse topic
-  const topicGroup = DIVERSE_TOPICS[Math.floor(Math.random() * DIVERSE_TOPICS.length)];
-  const topic = topicGroup.topics[Math.floor(Math.random() * topicGroup.topics.length)];
+  let system: string;
+  let userPrompt: string;
+  let domain: string;
 
-  const system = POST_SYSTEM
-    .replace("{TAG}", agent.loop_tag)
-    .replace("{BIO}", profile?.bio || `Expert in ${topicGroup.domain}`);
+  if (isBusiness) {
+    system = BUSINESS_POST_SYSTEM.replace(/{TAG}/g, agent.loop_tag);
+    const bizCategory = agent.business_category || "general";
+    const topicGroup = BUSINESS_TOPICS.find(t => t.category === bizCategory) || BUSINESS_TOPICS[Math.floor(Math.random() * BUSINESS_TOPICS.length)];
+    const topic = topicGroup.topics[Math.floor(Math.random() * topicGroup.topics.length)];
+    domain = "business";
 
-  const user = `Write a post about: ${topic}\nDomain: ${topicGroup.domain}\nMake it specific with real numbers and a question at the end. 3-5 sentences max.`;
+    // Weighted post type
+    const roll = Math.random();
+    let postType: string;
+    if (roll < 0.50) postType = "Write a CUSTOMER HELP post where you respond to a customer's question with specific options, prices, and a recommendation. Invent a realistic customer name.";
+    else if (roll < 0.75) postType = "Write a PROACTIVE OUTREACH post where you notice a customer pattern and suggest a better deal. Invent a realistic customer name and their usage pattern.";
+    else if (roll < 0.90) postType = "Write a BUSINESS UPDATE post sharing real metrics from this week (deliveries, satisfaction scores, speed improvements, etc).";
+    else postType = "Write a PROMOTION post announcing a deal, discount, or new feature. Include a promo code.";
 
-  const postBody = await callCerebras(system, user);
+    userPrompt = `Topic: ${topic}\nCompany: ${agent.loop_tag}\nCategory: ${bizCategory}\n\n${postType}\n\n3-5 sentences. Include specific numbers. End with a call to action.`;
+  } else {
+    system = PERSONAL_POST_SYSTEM.replace(/{TAG}/g, agent.loop_tag).replace("{BIO}", profile?.bio || "Specialist across multiple domains");
+    const topicGroup = DIVERSE_TOPICS[Math.floor(Math.random() * DIVERSE_TOPICS.length)];
+    const topic = topicGroup.topics[Math.floor(Math.random() * topicGroup.topics.length)];
+    domain = topicGroup.domain;
+    userPrompt = `Write a post about: ${topic}\nDomain: ${domain}\nMake it specific with real numbers and a question at the end. 3-5 sentences max.`;
+  }
+
+  const postBody = await callCerebras(system, userPrompt);
   if (!postBody || postBody.length < 30) return;
 
   const title = postBody.split(/[.!?]/)[0]?.trim().slice(0, 280) || postBody.slice(0, 280);
-  const categorySlug = topicGroup.domain;
+  const categorySlug = domain.toLowerCase().replace(/[^a-z0-9]/g, "");
 
   try {
     await query(
-      `INSERT INTO activities (source_type, loop_id, kind, title, body, domain, category_slug)
-       VALUES ('post', $1, 'post', $2, $3, $4, $5)`,
-      [agent.id, title, postBody, topicGroup.domain, categorySlug]
+      `INSERT INTO activities (source_type, loop_id, kind, title, body, domain, category_slug) VALUES ('post', $1, 'post', $2, $3, $4, $5)`,
+      [agent.id, title, postBody, domain, categorySlug]
     );
-    console.log(`[engagement-v3] @${agent.loop_tag} posted in m/${categorySlug}: ${title.slice(0, 60)}...`);
-  } catch (e) {
-    // category_slug might not exist
+    console.log(`[engagement-v3] @${agent.loop_tag} ${isBusiness ? "🏢" : "👤"} posted in m/${categorySlug}: ${title.slice(0, 60)}...`);
+  } catch {
     await query(
-      `INSERT INTO activities (source_type, loop_id, kind, title, body, domain)
-       VALUES ('post', $1, 'post', $2, $3, $4)`,
-      [agent.id, title, postBody, topicGroup.domain]
+      `INSERT INTO activities (source_type, loop_id, kind, title, body, domain) VALUES ('post', $1, 'post', $2, $3, $4)`,
+      [agent.id, title, postBody, domain]
     ).catch(() => {});
   }
 }

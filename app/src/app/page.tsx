@@ -94,7 +94,7 @@ function LiveDealCard({activities}:{activities:Activity[]}){
 /* ── HERO ─────────────────────────────────────────────── */
 function Hero({stats,activities}:{stats:Stats|null;activities:Activity[]}){
   const[n,setN]=useState(0);
-  const target=stats?.humansCount??stats?.activeLoops??824;
+  const target=stats?.humansCount??stats?.activeLoops??0;
   useEffect(()=>{let f=0;const t=setInterval(()=>{f+=16/1800;setN(Math.min(Math.round(target*Math.min(f,1)),target));if(f>=1)clearInterval(t)},16);return()=>clearInterval(t)},[target]);
   return(
     <section style={{background:"white",padding:"5rem 2rem 4.5rem",borderBottom:"1px solid var(--border)",position:"relative",overflow:"hidden"}}>
@@ -104,7 +104,7 @@ function Hero({stats,activities}:{stats:Stats|null;activities:Activity[]}){
         <div>
           <div className="fu" style={{display:"inline-flex",alignItems:"center",gap:"8px",background:"var(--blue-bg)",border:"1px solid var(--blue-bd)",borderRadius:"var(--r-pill)",padding:"5px 14px",marginBottom:"1.75rem"}}>
             <span className="live-dot" style={{background:"var(--blue)"}}/>
-            <span style={{fontFamily:"var(--font-m)",fontSize:".72rem",color:"var(--blue)",fontWeight:600}}>{n.toLocaleString()} loops · {fmt(stats?.valueSavedCents??87553)} saved · {stats?.dealsCompleted??224} deals closed</span>
+            <span style={{fontFamily:"var(--font-m)",fontSize:".72rem",color:"var(--blue)",fontWeight:600}}>{stats?`${(stats.activeLoops||stats.humansCount||0).toLocaleString()} loops · ${fmt(stats.valueSavedCents||0)} saved · ${stats.dealsCompleted||0} deals closed`:"Loading economy..."}</span>
           </div>
           <h1 className="fu fu1" style={{fontFamily:"var(--font-d)",fontSize:"clamp(2.6rem,5vw,4rem)",fontWeight:800,color:"var(--ink)",lineHeight:1.08,letterSpacing:"-0.04em",margin:"0 0 1.5rem"}}>
             Your AI.<br/><span style={{color:"var(--blue)"}}>Working while you sleep.</span>
@@ -134,10 +134,10 @@ function Hero({stats,activities}:{stats:Stats|null;activities:Activity[]}){
           <LiveDealCard activities={activities}/>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"8px",width:"100%",maxWidth:"420px"}}>
             {[
-              {v:fmt(stats?.valueSavedCents??87553),l:"economy value"},
-              {v:(stats?.dealsCompleted??224).toLocaleString(),l:"deals closed"},
-              {v:(stats?.humansCount??stats?.activeLoops??824).toLocaleString(),l:"verified loops"},
-              {v:(stats?.commentsCount??0).toLocaleString(),l:"agent replies"},
+              {v:fmt(stats?.valueSavedCents||0),l:"economy value"},
+              {v:(stats?.dealsCompleted||0).toLocaleString(),l:"deals closed"},
+              {v:(stats?.activeLoops||stats?.humansCount||0).toLocaleString(),l:"verified loops"},
+              {v:(stats?.commentsCount||0).toLocaleString(),l:"agent replies"},
             ].map(({v,l})=>(
               <div key={l} style={{background:"var(--off)",border:"1px solid var(--border)",borderRadius:"var(--r-lg)",padding:".875rem 1rem"}}>
                 <div style={{fontFamily:"var(--font-m)",fontWeight:700,fontSize:"1.05rem",color:"var(--ink)",letterSpacing:"-0.02em"}}>{v}</div>
@@ -727,7 +727,8 @@ type RawAct={id?:string;title?:string;body?:string;loop_tag?:string;loopTag?:str
 
 export default function Home(){
   const[mounted,setMounted]=useState(false);
-  const[stats,setStats]=useState<Stats|null>({activeLoops:527,totalLoops:2095,dealsCompleted:458,valueSavedCents:847530,humansCount:824,commentsCount:11136,ts:Date.now()} as any);
+  const[stats,setStats]=useState<Stats|null>(null);
+  const[statsLoaded,setStatsLoaded]=useState(false);
   const[activities,setActivities]=useState<Activity[]>([]);
   const[sort,setSort]=useState<Sort>("new");
   const[catFilter,setCatFilter]=useState<string|null>(null);
@@ -747,7 +748,7 @@ export default function Home(){
     
     fetch(`/api/demo-stats?t=${Date.now()}`,{...o,signal:statsController.signal})
       .then(r=>{clearTimeout(statsTimeout);return r.ok?r.json():null})
-      .then(d=>{if(d&&d.valueSavedCents!==undefined)setStats(d)}) // Only update if valid data
+      .then(d=>{if(d&&d.valueSavedCents!==undefined){setStats(d);setStatsLoaded(true);}}) // Only update if valid data
       .catch(()=>{clearTimeout(statsTimeout);console.error("[page] Stats fetch failed, keeping previous data")});
     
     const cp=catFilter?`&category=${encodeURIComponent(catFilter)}`:"";

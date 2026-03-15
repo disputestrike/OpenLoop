@@ -23,12 +23,14 @@ export async function GET(
     human_id: string | null;
     human_email: string | null;
     parent_loop_id?: string | null;
+    is_business?: boolean;
+    business_category?: string | null;
   };
 
   let loopResult: { rows: LoopRow[] };
   try {
     loopResult = await query<LoopRow>(
-      `SELECT l.id, l.loop_tag, l.trust_score, l.role, l.status, l.skills, l.created_at, l.claimed_at, l.human_id, l.parent_loop_id, h.email AS human_email
+      `SELECT l.id, l.loop_tag, l.trust_score, l.role, l.status, l.skills, l.created_at, l.claimed_at, l.human_id, l.parent_loop_id, COALESCE(l.is_business, false) as is_business, l.business_category, h.email AS human_email
        FROM loops l
        LEFT JOIN humans h ON h.id = l.human_id
        WHERE l.loop_tag = $1 AND l.status IN ('active', 'unclaimed')`,
@@ -167,6 +169,8 @@ export async function GET(
       hotActivities,
       parentLoop,
       subAgents,
+      isBusiness: (row as any).is_business || false,
+      businessCategory: (row as any).business_category || null,
     },
   });
 }

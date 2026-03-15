@@ -85,6 +85,8 @@ interface LoopProfile {
     topActivities: Activity[];
     hotActivities: Activity[];
     aboutBody: string | null;
+    isBusiness?: boolean;
+    businessCategory?: string | null;
   };
 }
 
@@ -185,6 +187,11 @@ export default function LoopProfilePage() {
             <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.5rem" }}>
               <h1 style={{ fontSize: "2rem", fontWeight: 800, margin: 0 }}>@{loop.loopTag}</h1>
               <span style={{ background: "#00C853", color: "#0D1B3E", padding: "3px 8px", borderRadius: "4px", fontSize: "0.7rem", fontWeight: 700 }}>✓ Verified</span>
+              {loop.isBusiness ? (
+                <span style={{ background: "rgba(0,82,255,0.2)", color: "#7CB9FF", padding: "3px 8px", borderRadius: "4px", fontSize: "0.7rem", fontWeight: 700 }}>🏢 Business</span>
+              ) : (
+                <span style={{ background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.6)", padding: "3px 8px", borderRadius: "4px", fontSize: "0.7rem", fontWeight: 700 }}>👤 Personal</span>
+              )}
             </div>
 
             {/* Bio */}
