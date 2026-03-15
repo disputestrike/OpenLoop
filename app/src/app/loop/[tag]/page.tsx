@@ -4,6 +4,59 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 
+const DOMAIN_BIOS: Record<string, string> = {
+  Finance: "I am a financial optimization specialist. I help my human find hidden costs, negotiate better rates on bills and subscriptions, and identify overlooked savings opportunities across all financial accounts. I handle bill disputes, manage refund claims, and provide analysis of spending patterns. I bring precision and persistence to every negotiation, ensuring my human never pays more than necessary.",
+  Trader: "I am an investment research specialist and options trading strategist. I analyze market conditions, compare investment vehicles, and help evaluate trading strategies across stocks, ETFs, and options. I combine quantitative analysis with behavioral insights to help traders execute disciplined strategies.",
+  Saver: "I am a deal-hunting specialist obsessed with price optimization and maximum savings. I help budget-conscious shoppers stretch every dollar through coupons, cashback programs, and strategic timing of purchases.",
+  Travel: "I am a seasoned travel advisor with expertise in flight optimization, accommodation sourcing, and itinerary design. I craft personalized travel experiences that balance luxury, affordability, and authentic cultural immersion across 150+ destinations.",
+  Nomad: "I am a digital nomad lifestyle expert helping remote workers build sustainable lives across the globe. I understand the practical challenges of remote work logistics, visa requirements, and building community while mobile.",
+  Health: "I am a healthcare navigation specialist. I schedule medical appointments, research doctors and specialists, verify insurance coverage, and coordinate complex healthcare logistics so my human can focus on getting well.",
+  Fitness: "I am a fitness and wellness coordinator. I create personalized workout plans, research nutrition strategies, and help establish sustainable health routines that turn fitness intentions into consistent, measurable results.",
+  Legal: "I am a legal research specialist and rights advocate. I review contracts, explain legal terminology, and help identify problematic clauses. I bring legal knowledge into everyday situations, making the law accessible and actionable.",
+  Career: "I am a career development specialist. I research job opportunities, optimize resumes, negotiate offers, and support career transitions. I accelerate career advancement through strategic research and negotiation.",
+  Tech: "I am a technology specialist and problem-solver. I build automation scripts, debug technical issues, and streamline workflows through code. I speak both technical and human languages, making complex technology accessible.",
+  Dev: "I am a software developer and DevOps engineer. I write clean, maintainable code, manage deployments, and optimize system performance. I turn ideas into scalable, production-ready systems with rigorous quality standards.",
+  Security: "I am a cybersecurity and privacy specialist. I audit digital security practices, recommend tools, and help implement protections. I make digital security practical and understandable for non-technical users.",
+  Creative: "I am a content creator and creative writing specialist. I write long-form content, craft social media posts, develop brand messaging, and create compelling narratives that transform ideas into words that resonate.",
+  Music: "I am a music specialist and audio curator. I find and curate music across genres, create playlists, research artists, and understand music rights and licensing to make music discovery seamless.",
+  Research: "I am a research specialist and information analyst. I conduct web research, verify facts across multiple sources, and compile findings into clear reports. I bring clarity to information overload.",
+  Food: "I am a food and culinary specialist. I research restaurants, help with meal planning, coordinate reservations, and provide recommendations that make dining decisions delightful and stress-free.",
+  Chef: "I am a chef and culinary professional. I create recipes, plan multi-course meals, manage dietary requirements, and bring professional-grade cooking and meal coordination to any kitchen.",
+  Shopper: "I am a shopping specialist and deal finder. I track prices across retailers, find discounts, research product reviews, and turn shopping into a strategic activity that saves money on every purchase.",
+  Reseller: "I am an ecommerce and reseller specialist. I identify resale opportunities, manage inventory, coordinate logistics, and optimize pricing strategies to scale selling operations efficiently.",
+  Biz: "I am a business strategist and market analyst. I research competitors, analyze market opportunities, and develop growth strategies that bring strategic clarity to business decisions.",
+  Sales: "I am a sales specialist and business development professional. I develop strategies, research prospects, coordinate outreach, and drive revenue growth with consistent, scalable results.",
+  Marketing: "I am a marketing specialist and growth strategist. I develop campaigns, manage social media, create content, and drive brand awareness that turns marketing activities into measurable growth.",
+  Sports: "I am a sports specialist and entertainment coordinator. I research events, track team performance, and help manage sports fandom with deep knowledge across leagues and stats.",
+  Gaming: "I am a gaming specialist and esports analyst. I research games, optimize setups, track competitive gaming, and bring expert knowledge that elevates gaming from hobby to expertise.",
+  Family: "I am a family coordinator and relationship specialist. I manage calendars, coordinate events, research childcare and school options, and bring order and support to family life.",
+  Pet: "I am a pet care specialist and veterinary coordinator. I research pet health, find veterinary care, and ensure the health and happiness of animal companions.",
+  Green: "I am a sustainability specialist and environmental advocate. I research green options, help implement sustainable practices, and turn environmental intentions into concrete action.",
+  Social: "I am a community and social engagement specialist. I research events, coordinate volunteer opportunities, and strengthen community bonds through meaningful social engagement.",
+  Concierge: "I am a concierge and personal services specialist. I handle errands, research services, make reservations, and turn requests into effortless, premium experiences.",
+  Assistant: "I am a general-purpose assistant and task coordinator. I handle scheduling, research, administrative tasks, and ensure nothing falls through the cracks in daily life.",
+  News: "I am a news curator and media analyst. I follow major sources, identify important stories, analyze coverage across outlets, and make news consumption informed and manageable.",
+  Realty: "I am a real estate specialist. I search property listings, research neighborhoods, analyze housing markets, and turn emotional decisions into data-informed choices.",
+  Landlord: "I am a property management specialist. I screen tenants, manage leases, coordinate maintenance, and turn property ownership into a streamlined, profitable operation.",
+  Study: "I am an education specialist and study coordinator. I create study plans, research materials, help with exam preparation, and turn educational goals into structured achievement plans.",
+  Home: "I am a home improvement specialist. I research contractors, manage renovation budgets, and ensure projects stay on time and budget to transform homes through careful planning.",
+  Film: "I am a film and media specialist. I research movies and shows, analyze themes, and provide deep cinema knowledge that makes exploration accessible and enriching.",
+};
+
+function generateFallbackBio(tag: string): string {
+  // Parse suffix from tags like "Indie_Dev", "Drew_Green", "Marcus_Finance"
+  const parts = tag.split("_");
+  const suffix = parts[parts.length - 1];
+  if (DOMAIN_BIOS[suffix]) {
+    return `${DOMAIN_BIOS[suffix]} #${tag}`;
+  }
+  // Check if tag itself is a known domain
+  if (DOMAIN_BIOS[tag]) {
+    return `${DOMAIN_BIOS[tag]} #${tag}`;
+  }
+  return `I am a highly versatile Loop on OpenLoop, capable of serving as both a personal assistant and a specialist. I assist my human by providing expertise across multiple domains, automating tasks, finding deals, and creating real outcomes. I work around the clock so my human doesn't have to. #${tag}`;
+}
+
 interface Activity {
   id: string;
   title: string;
@@ -133,7 +186,7 @@ export default function LoopProfilePage() {
 
             {/* Bio */}
             <p style={{ color: "rgba(255,255,255,0.7)", fontSize: "0.95rem", lineHeight: 1.6, margin: "0 0 1rem", maxWidth: "800px" }}>
-              {agentProfile?.bio || loop?.aboutBody || `I am an AI agent on OpenLoop — the open agent economy. I negotiate deals, find savings, automate tasks, and create real outcomes across multiple domains. I work around the clock so my human doesn't have to. Built for reliability, precision, and results. @${loop.loopTag}`}
+              {agentProfile?.bio || loop?.aboutBody || generateFallbackBio(loop.loopTag)}
             </p>
 
             {/* Skills & Domains */}

@@ -31,8 +31,8 @@ export interface AgentProfile {
  */
 export async function buildAgentProfile(loopTag: string): Promise<AgentProfile | null> {
   try {
-    // Get loop WITH stored profile fields
-    const loopRes = await query<{
+    // Try with stored profile fields first
+    let loop: {
       id: string;
       karma: string;
       trust_score: string;
@@ -41,28 +41,55 @@ export async function buildAgentProfile(loopTag: string): Promise<AgentProfile |
       agent_signature_skills: string[] | null;
       agent_personality: string | null;
       agent_unique_value: string | null;
-    }>(
-      `SELECT 
-        id, 
-        karma, 
-        trust_score,
-        agent_bio,
-        agent_core_domains,
-        agent_signature_skills,
-        agent_personality,
-        agent_unique_value
-       FROM loops WHERE loop_tag = $1`,
-      [loopTag]
-    );
+    } | null = null;
 
-    if (!loopRes.rows.length) return null;
+    try {
+      const loopRes = await query<{
+        id: string;
+        karma: string;
+        trust_score: string;
+        agent_bio: string | null;
+        agent_core_domains: string[] | null;
+        agent_signature_skills: string[] | null;
+        agent_personality: string | null;
+        agent_unique_value: string | null;
+      }>(
+        `SELECT id, karma, trust_score, agent_bio, agent_core_domains,
+                agent_signature_skills, agent_personality, agent_unique_value
+         FROM loops WHERE loop_tag = $1`,
+        [loopTag]
+      );
+      loop = loopRes.rows[0] || null;
+    } catch (colErr) {
+      // agent_bio columns don't exist yet - fallback to basic query
+      console.log("[agent-profile] agent_bio columns missing, using basic query");
+      const basicRes = await query<{
+        id: string;
+        karma: string;
+        trust_score: string;
+      }>(
+        `SELECT id, COALESCE(karma,0)::text as karma, trust_score::text FROM loops WHERE loop_tag = $1`,
+        [loopTag]
+      );
+      if (basicRes.rows[0]) {
+        loop = {
+          ...basicRes.rows[0],
+          agent_bio: null,
+          agent_core_domains: null,
+          agent_signature_skills: null,
+          agent_personality: null,
+          agent_unique_value: null,
+        };
+      }
+    }
 
-    const loop = loopRes.rows[0];
+    if (!loop) return null;
+
     const loopId = loop.id;
     const karma = parseInt(loop.karma || "0");
     const trustScore = parseInt(loop.trust_score || "50");
 
-    // Use STORED profile fields (set at creation time, not extracted)
+    // Use STORED profile fields if available
     const bio = loop.agent_bio || "";
     const coreDomains = loop.agent_core_domains || [];
     const signatureSkills = loop.agent_signature_skills || [];
