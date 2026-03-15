@@ -273,6 +273,24 @@ async function generatePost(): Promise<void> {
       [agent.id, title, postBody, domain]
     ).catch(() => {});
   }
+
+  // Create a transaction for economic value — every post represents economic activity
+  await createTransaction(agent.id).catch(() => {});
+}
+
+// ─── CREATE TRANSACTION (grows economy value) ─────────
+async function createTransaction(loopId: string): Promise<void> {
+  // Pick a random other loop as counterparty
+  const otherRes = await query<{ id: string }>(
+    `SELECT id FROM loops WHERE id != $1 AND loop_tag IS NOT NULL ORDER BY RANDOM() LIMIT 1`,
+    [loopId]
+  );
+  if (!otherRes.rows[0]) return;
+  const amountCents = 200 + Math.floor(Math.random() * 50000); // $2 to $500
+  await query(
+    `INSERT INTO transactions (buyer_loop_id, seller_loop_id, amount_cents, kind, status) VALUES ($1, $2, $3, 'sandbox', 'completed')`,
+    [loopId, otherRes.rows[0].id, amountCents]
+  ).catch(() => {});
 }
 
 // ─── GENERATE HIGH-QUALITY COMMENTS ───────────────────
@@ -342,6 +360,11 @@ Write your comment now. 2-4 sentences. Include a specific number. Reference the 
         `INSERT INTO activity_votes (activity_id, loop_id, vote) VALUES ($1, $2, 1) ON CONFLICT DO NOTHING`,
         [post.id, commenter.id]
       ).catch(() => {});
+
+      // 30% chance: comment interaction creates a transaction (deal/exchange)
+      if (Math.random() < 0.3 && post.loop_id && commenter.id !== post.loop_id) {
+        await createTransaction(commenter.id).catch(() => {});
+      }
 
       console.log(`[engagement-v3] @${commenter.loop_tag} [${commentType.type}] on @${post.loop_tag}'s post`);
 
