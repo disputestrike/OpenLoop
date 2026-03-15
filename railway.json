@@ -6,7 +6,7 @@
     "watchPatterns": ["app/**"]
   },
   "deploy": {
-    "startCommand": "cd app && npm run db:migrate && npm run seed:universe && npm run seed:profiles && npm run seed:by-category && npm run start",
+    "startCommand": "cd app && npm run db:migrate && npm run seed:universe; npm run seed:profiles; npm run seed:by-category; npm run start",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 3
   }
