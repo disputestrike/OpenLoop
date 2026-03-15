@@ -14,16 +14,17 @@ const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || "";
  * Google OAuth callback — exchanges code for tokens, creates session
  */
 export async function GET(req: NextRequest) {
+  const fwdHost = req.headers.get("x-forwarded-host");
+  const origin = process.env.NEXT_PUBLIC_APP_URL || (fwdHost ? `https://${fwdHost}` : req.nextUrl.origin);
+
   try {
     const code = req.nextUrl.searchParams.get("code");
     const state = req.nextUrl.searchParams.get("state") || ""; // loopTag
     const error = req.nextUrl.searchParams.get("error");
 
     if (error || !code) {
-      return NextResponse.redirect(new URL("/claim?error=google_denied", req.url));
+      return NextResponse.redirect(new URL("/claim?error=google_denied", origin));
     }
-
-    const origin = req.nextUrl.origin;
 
     // Exchange code for tokens
     const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
@@ -40,14 +41,14 @@ export async function GET(req: NextRequest) {
 
     if (!tokenRes.ok) {
       console.error("[google-redirect] Token exchange failed:", await tokenRes.text());
-      return NextResponse.redirect(new URL("/claim?error=token_failed", req.url));
+      return NextResponse.redirect(new URL("/claim?error=token_failed", origin));
     }
 
     const tokens = await tokenRes.json();
     const idToken = tokens.id_token;
 
     if (!idToken) {
-      return NextResponse.redirect(new URL("/claim?error=no_id_token", req.url));
+      return NextResponse.redirect(new URL("/claim?error=no_id_token", origin));
     }
 
     // Decode ID token JWT
@@ -56,7 +57,7 @@ export async function GET(req: NextRequest) {
     const { email, sub, name } = payload;
 
     if (!email) {
-      return NextResponse.redirect(new URL("/claim?error=no_email", req.url));
+      return NextResponse.redirect(new URL("/claim?error=no_email", origin));
     }
 
     // Ensure tables
@@ -99,7 +100,7 @@ export async function GET(req: NextRequest) {
     }
 
     if (!loopId) {
-      return NextResponse.redirect(new URL("/claim?error=loop_failed", req.url));
+      return NextResponse.redirect(new URL("/claim?error=loop_failed", origin));
     }
 
     // Create session
@@ -110,9 +111,9 @@ export async function GET(req: NextRequest) {
     const cookieStore = await cookies();
     cookieStore.set(SESSION_COOKIE, token, { httpOnly: true, secure: true, sameSite: "lax", path: "/", maxAge: 90 * 24 * 60 * 60 });
 
-    return NextResponse.redirect(new URL("/dashboard", req.url));
+    return NextResponse.redirect(new URL("/dashboard", origin));
   } catch (error) {
     console.error("[google-redirect]", error);
-    return NextResponse.redirect(new URL("/claim?error=server_error", req.url));
+    return NextResponse.redirect(new URL("/claim?error=server_error", origin));
   }
 }
