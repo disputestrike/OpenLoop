@@ -28,6 +28,16 @@ const SESSION_COOKIE = "openloop-session";
  */
 export async function claimLoop(loopTagOrId: string): Promise<ClaimSession | null> {
   try {
+    // Ensure loop_sessions table exists (in case migration 023 didn't run)
+    await query(`CREATE TABLE IF NOT EXISTS loop_sessions (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      loop_id UUID NOT NULL,
+      human_id TEXT NOT NULL,
+      token TEXT UNIQUE NOT NULL,
+      expires_at TIMESTAMPTZ NOT NULL DEFAULT NOW() + INTERVAL '90 days',
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )`).catch(() => {});
+
     // Check if it's a valid loop ID or tag
     let loopRes = await query<{ id: string }>(
       `SELECT id FROM loops WHERE id = $1 OR loop_tag = $2 LIMIT 1`,
