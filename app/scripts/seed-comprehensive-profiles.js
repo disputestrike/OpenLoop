@@ -395,51 +395,76 @@ async function seed() {
     let successCount = 0;
     let failCount = 0;
 
-    for (const profile of AGENT_PROFILES) {
-      const loopId = randomUUID();
-      const trustScore = Math.min(95, 65 + Math.random() * 30); // 65-95 for agents
-      const karma = Math.floor(50 + Math.random() * 450); // 50-500
+    // Business agent tags that exist as exact matches in DB
+    const EXACT_MATCH_TAGS = ["Comcast","ATT","Verizon","TMobile","Netflix","Spotify","Hulu","Disney","Amazon","Progressive","Geico","StateFarm","BankOfAmerica","ChaseBank","Expedia","Delta","United","Marriott","Airbnb","Uber","DoorDash","Instacart","AmazonPrime","Apple","Google","Microsoft","Salesforce","Zillow","Redfin","CVS","Walgreens","Planet_Fitness","Peloton","SiriusXM","Adobe"];
 
+    for (const profile of AGENT_PROFILES) {
       try {
-        await client.query(
-          `INSERT INTO loops (
-            id, loop_tag, persona, trust_score, karma, status, role, 
-            agent_bio, agent_core_domains, agent_signature_skills, agent_personality, agent_unique_value,
-            created_at, sandbox_balance_cents
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, now(), 100000)
-           ON CONFLICT (loop_tag) DO UPDATE SET
-             agent_bio = $8,
-             agent_core_domains = $9,
-             agent_signature_skills = $10,
-             agent_personality = $11,
-             agent_unique_value = $12,
-             trust_score = $4,
-             karma = $5
-          `,
-          [
-            loopId,
-            profile.loopTag,
-            "personal",
-            trustScore,
-            karma,
-            "active",
-            "both",
-            profile.bio,
-            JSON.stringify(profile.coreDomains),
-            JSON.stringify(profile.signatureSkills),
-            profile.personality,
-            profile.uniqueValue
-          ]
-        );
-        successCount++;
-        console.log(`✅ @${profile.loopTag}`);
+        const isExactMatch = EXACT_MATCH_TAGS.includes(profile.loopTag);
+        
+        if (isExactMatch) {
+          // Business agents: exact match update
+          const res = await client.query(
+            `UPDATE loops SET
+              agent_bio = $1,
+              agent_core_domains = $2,
+              agent_signature_skills = $3,
+              agent_personality = $4,
+              agent_unique_value = $5
+            WHERE loop_tag = $6`,
+            [
+              profile.bio,
+              JSON.stringify(profile.coreDomains),
+              JSON.stringify(profile.signatureSkills),
+              profile.personality,
+              profile.uniqueValue,
+              profile.loopTag
+            ]
+          );
+          if (res.rowCount === 0) {
+            // Doesn't exist yet - insert it
+            await client.query(
+              `INSERT INTO loops (id, loop_tag, persona, trust_score, karma, status, role,
+                agent_bio, agent_core_domains, agent_signature_skills, agent_personality, agent_unique_value,
+                sandbox_balance_cents)
+              VALUES ($1, $2, 'business', $3, $4, 'active', 'both', $5, $6, $7, $8, $9, 100000)
+              ON CONFLICT (loop_tag) DO UPDATE SET agent_bio=$5, agent_core_domains=$6, agent_signature_skills=$7, agent_personality=$8, agent_unique_value=$9`,
+              [randomUUID(), profile.loopTag, 75, 100, profile.bio,
+               JSON.stringify(profile.coreDomains), JSON.stringify(profile.signatureSkills),
+               profile.personality, profile.uniqueValue]
+            );
+          }
+          successCount++;
+          console.log(`✅ @${profile.loopTag} (exact: ${res.rowCount} updated)`);
+        } else {
+          // Domain agents: ILIKE match — updates Marcus_Finance, Alex_Finance, etc.
+          const res = await client.query(
+            `UPDATE loops SET
+              agent_bio = $1,
+              agent_core_domains = $2,
+              agent_signature_skills = $3,
+              agent_personality = $4,
+              agent_unique_value = $5
+            WHERE loop_tag ILIKE $6`,
+            [
+              profile.bio,
+              JSON.stringify(profile.coreDomains),
+              JSON.stringify(profile.signatureSkills),
+              profile.personality,
+              profile.uniqueValue,
+              `%${profile.loopTag}`
+            ]
+          );
+          successCount++;
+          console.log(`✅ @*_${profile.loopTag} (ILIKE: ${res.rowCount} loops updated)`);
+        }
       } catch (err) {
         failCount++;
         console.error(`❌ @${profile.loopTag}: ${err.message}`);
       }
     }
 
-    console.log(`\n✅ Successfully seeded: ${successCount}/${AGENT_PROFILES.length} agents`);
+    console.log(`\n✅ Successfully seeded: ${successCount}/${AGENT_PROFILES.length} agent profiles`);
     if (failCount > 0) console.log(`⚠️  Failed: ${failCount}`);
   } finally {
     await client.end();
