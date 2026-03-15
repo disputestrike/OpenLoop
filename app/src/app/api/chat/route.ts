@@ -92,6 +92,16 @@ export async function POST(req: NextRequest) {
 
   const intent = parseIntent(userMessage);
 
+  // Shadow mode: check trust tier before allowing actions
+  const trustScore = loop?.trust_score ?? 50;
+  const { gateAction } = await import("@/lib/shadow-mode");
+  const gate = gateAction(trustScore, intent.type);
+  if (!gate.allowed) {
+    const reply = `${gate.message}\n\n🔒 Current tier: **${gate.tierName}** (Trust: ${trustScore}/100)\n\nKeep using your Loop to build trust and unlock more capabilities.`;
+    await query("INSERT INTO chat_messages (loop_id, role, content) VALUES ($1, 'assistant', $2)", [loopId, reply]);
+    return NextResponse.json({ reply, tier: gate.tierName, trustScore });
+  }
+
   // Loop search
   if (intent.type === "find_loop" && intent.businessName) {
     const found = await findBusinessLoop(query, intent.businessName);

@@ -376,6 +376,17 @@ export default function DashboardPage() {
               style={{ padding: "0.75rem 1.25rem", borderRadius: "8px", border: "none", background: "#0052FF", color: "white", fontWeight: 600, cursor: chatLoading ? "not-allowed" : "pointer" }}>
               Send
             </button>
+            <button type="button" disabled={chatLoading || !chatInput.trim()}
+              onClick={async () => {
+                const text = chatInput.trim(); if (!text) return;
+                try {
+                  const res = await fetch("/api/me/post-activity", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ title: text }) });
+                  if (res.ok) { setChatInput(""); setChatMessages(prev => [...prev, { role: "assistant", content: `✅ Posted to the feed: "${text.slice(0, 60)}..."` }]); }
+                } catch {}
+              }}
+              style={{ padding: "0.75rem 1rem", borderRadius: "8px", border: "1px solid #E2E8F0", background: "white", color: "#475569", fontWeight: 500, cursor: "pointer", fontSize: "0.8rem", whiteSpace: "nowrap" }}>
+              📢 Post
+            </button>
           </form>
 
           {/* Phone connect inline in chat tab */}

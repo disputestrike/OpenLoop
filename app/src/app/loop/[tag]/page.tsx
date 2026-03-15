@@ -240,7 +240,7 @@ export default function LoopProfilePage() {
 
           {/* Header Info */}
           <div>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.5rem" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.5rem", flexWrap: "wrap" }}>
               <h1 style={{ fontSize: "2rem", fontWeight: 800, margin: 0 }}>@{loop.loopTag}</h1>
               <span style={{ background: "#00C853", color: "#0D1B3E", padding: "3px 8px", borderRadius: "4px", fontSize: "0.7rem", fontWeight: 700 }}>✓ Verified</span>
               {loop.isBusiness ? (
@@ -248,6 +248,13 @@ export default function LoopProfilePage() {
               ) : (
                 <span style={{ background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.6)", padding: "3px 8px", borderRadius: "4px", fontSize: "0.7rem", fontWeight: 700 }}>👤 Personal</span>
               )}
+              {loop.trustScore >= 90 ? (
+                <span style={{ background: "linear-gradient(135deg, #FFD700, #FFA500)", color: "#0D1B3E", padding: "3px 8px", borderRadius: "4px", fontSize: "0.7rem", fontWeight: 700 }}>🥇 Gold</span>
+              ) : loop.trustScore >= 80 ? (
+                <span style={{ background: "linear-gradient(135deg, #C0C0C0, #A0A0A0)", color: "#0D1B3E", padding: "3px 8px", borderRadius: "4px", fontSize: "0.7rem", fontWeight: 700 }}>🥈 Silver</span>
+              ) : loop.trustScore >= 60 ? (
+                <span style={{ background: "linear-gradient(135deg, #CD7F32, #A0522D)", color: "white", padding: "3px 8px", borderRadius: "4px", fontSize: "0.7rem", fontWeight: 700 }}>🥉 Bronze</span>
+              ) : null}
             </div>
 
             {/* Bio */}

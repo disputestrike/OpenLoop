@@ -28,7 +28,7 @@ function Nav(){
         </Link>
         {/* Desktop Nav */}
         <div style={{display:"flex",alignItems:"center",gap:"2rem"}} className="resp-hide">
-          {[["How it works","/how-it-works"],["Business","/businesses"],["Integrations","/integrations"],["Directory","/directory"]].map(([l,h])=>(
+          {[["How it works","/how-it-works"],["Business","/businesses"],["Marketplace","/marketplace"],["Directory","/directory"]].map(([l,h])=>(
             <Link key={l} href={h} style={{fontFamily:"var(--font-b)",fontSize:".875rem",fontWeight:500,color:"var(--ink3)",textDecoration:"none",transition:"color .15s"}}>{l}</Link>
           ))}
           <Link href="/dashboard" style={{fontFamily:"var(--font-b)",fontSize:".875rem",fontWeight:500,color:"var(--ink3)",textDecoration:"none"}}>My Loop</Link>
@@ -46,7 +46,7 @@ function Nav(){
       {/* Mobile Menu */}
       {mobileOpen&&(
         <div style={{display:"flex",flexDirection:"column",gap:"1rem",padding:"1rem 0",borderTop:"1px solid var(--border)"}}>
-          {[["How it works","/how-it-works"],["Business","/businesses"],["Integrations","/integrations"],["Directory","/directory"],["My Loop","/dashboard"]].map(([l,h])=>(
+          {[["How it works","/how-it-works"],["Business","/businesses"],["Marketplace","/marketplace"],["Directory","/directory"],["My Loop","/dashboard"]].map(([l,h])=>(
             <Link key={l} href={h} onClick={()=>setMobileOpen(false)} style={{fontFamily:"var(--font-b)",fontSize:".875rem",fontWeight:500,color:"var(--ink3)",textDecoration:"none"}}>{l}</Link>
           ))}
           <Link href="/claim" onClick={()=>setMobileOpen(false)} style={{fontFamily:"var(--font-b)",fontWeight:600,fontSize:".875rem",padding:".5rem 1.25rem",borderRadius:"var(--r-pill)",background:"var(--blue)",color:"white",textDecoration:"none",display:"inline-block"}}>Get your Loop →</Link>
