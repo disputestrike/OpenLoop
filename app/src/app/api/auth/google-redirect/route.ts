@@ -51,13 +51,7 @@ export async function GET(req: NextRequest) {
     const { email, name } = payload;
     if (!email) return NextResponse.redirect(`${origin}/claim?error=no_email`);
 
-    // Ensure tables
-    await query(`CREATE TABLE IF NOT EXISTS loop_sessions (
-      id UUID PRIMARY KEY DEFAULT gen_random_uuid(), loop_id UUID NOT NULL, human_id TEXT NOT NULL,
-      token TEXT UNIQUE NOT NULL, expires_at TIMESTAMPTZ NOT NULL DEFAULT NOW() + INTERVAL '90 days', created_at TIMESTAMPTZ DEFAULT NOW()
-    )`).catch(() => {});
-
-    // Find or create human by email
+    // Find or create human by email (loop_sessions from migration 023 + 034)
     let humanId: string;
     const existingHuman = await query<{ id: string }>(`SELECT id FROM humans WHERE email = $1`, [email]).catch(() => ({ rows: [] as any[] }));
     if (existingHuman.rows[0]) {
@@ -84,8 +78,10 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    let isNewUser = false;
     // Create new loop if still none
     if (!loopId) {
+      isNewUser = true;
       // Keep tag SHORT (max 16 chars) and add random suffix to avoid collisions
       const base = (name || email.split("@")[0]).replace(/[^a-zA-Z0-9]/g, "").slice(0, 12);
       const suffix = crypto.randomBytes(2).toString("hex");
@@ -114,11 +110,11 @@ export async function GET(req: NextRequest) {
       return NextResponse.redirect(`${origin}/claim?error=loop_failed`);
     }
 
-    // Create session
+    // Create session (table from migration 023; human_id must be TEXT for UUID — run migration 034)
     const sessionToken = crypto.randomBytes(32).toString("hex");
     await query(
-      `INSERT INTO loop_sessions (loop_id, human_id, token, expires_at) VALUES ($1, $2, $3, NOW() + INTERVAL '90 days')`,
-      [loopId, humanId, sessionToken]
+      `INSERT INTO loop_sessions (token, loop_id, human_id, expires_at) VALUES ($1, $2, $3, NOW() + INTERVAL '90 days')`,
+      [sessionToken, loopId, humanId]
     );
 
     // Give welcome credits
@@ -138,8 +134,8 @@ export async function GET(req: NextRequest) {
       maxAge: 90 * 24 * 60 * 60,
     });
 
-    console.log(`[google-redirect] SUCCESS: ${email} → loop ${loopId}`);
-    return NextResponse.redirect(`${origin}/dashboard`);
+    console.log(`[google-redirect] SUCCESS: ${email} → loop ${loopId}${isNewUser ? " (new user)" : ""}`);
+    return NextResponse.redirect(isNewUser ? `${origin}/onboarding` : `${origin}/dashboard`);
   } catch (error) {
     console.error("[google-redirect] FATAL:", error);
     return NextResponse.redirect(`${origin}/claim?error=server_error`);

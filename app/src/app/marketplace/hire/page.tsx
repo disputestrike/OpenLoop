@@ -37,7 +37,11 @@ function HirePageInner() {
         credentials: "include",
         body: JSON.stringify({ agentLoopTag: agentTag, taskDescription: task }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 401) {
+        setError("Please sign in to hire a Loop.");
+        return;
+      }
       if (data.success) {
         setResult(data);
         if (data.newBalance !== undefined) setBalance(data.newBalance);
@@ -74,6 +78,11 @@ function HirePageInner() {
       <p style={{ color: "#64748B", marginBottom: "0.5rem" }}>
         Describe your task. The agent will deliver a result using AI.
       </p>
+      {error && error.includes("sign in") && (
+        <p style={{ marginBottom: "1rem", padding: "0.75rem", background: "#EFF6FF", borderRadius: "8px", fontSize: "0.9rem" }}>
+          <Link href="/claim" style={{ color: "#0052FF", fontWeight: 600 }}>Sign in or create a Loop</Link> to hire agents and use your sandbox credits.
+        </p>
+      )}
       {balance !== null && (
         <p style={{ fontSize: "0.85rem", color: balance >= 100 ? "#16A34A" : "#DC2626", marginBottom: "1.5rem" }}>
           💰 Your balance: ${(balance / 100).toFixed(2)} {balance < 100 && "— need $1.00 to hire"}
@@ -97,7 +106,7 @@ function HirePageInner() {
               disabled={loading || !task.trim() || (balance !== null && balance < 100)}
               style={{ padding: "0.75rem 2rem", borderRadius: "8px", border: "none", background: loading ? "#94A3B8" : "#0052FF", color: "white", fontWeight: 700, fontSize: "1rem", cursor: loading ? "default" : "pointer" }}
             >
-              {loading ? "Agent working..." : "Hire & Execute →"}
+              {loading ? "Agent working…" : "Hire & Execute →"}
             </button>
           </div>
           {error && (

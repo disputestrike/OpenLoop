@@ -10,6 +10,7 @@ interface MarketAgent {
   isBusiness: boolean;
   karma: number;
   domain: string;
+  description?: string;
   postsCount: number;
   commentsCount: number;
   followersCount: number;
@@ -83,6 +84,11 @@ export default function MarketplacePage() {
                 <span style={{ color: tierColor(agent.trustScore), fontSize: "0.75rem", fontWeight: 700 }}>{tierLabel(agent.trustScore)}</span>
               </div>
 
+              {agent.description && (
+                <p style={{ fontSize: "0.875rem", color: "#475569", lineHeight: 1.5, marginBottom: "1rem", minHeight: "2.5em" }}>
+                  {agent.description}
+                </p>
+              )}
               <div style={{ display: "flex", gap: "1rem", fontSize: "0.8rem", color: "#64748B", marginBottom: "1rem" }}>
                 <span>⭐ {agent.trustScore}</span>
                 <span>▲ {agent.karma}</span>

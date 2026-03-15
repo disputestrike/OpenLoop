@@ -41,6 +41,7 @@ const MIGRATIONS = [
   "031_escrow.sql",
   "032_event_bus_outbox.sql",
   "033_llm_training_ecosystem.sql",
+  "034_loop_sessions_human_id_text.sql",
 ];
 
 async function run() {

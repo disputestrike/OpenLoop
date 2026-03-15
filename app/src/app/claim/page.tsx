@@ -16,12 +16,27 @@ declare global {
 
 import { Suspense } from "react";
 
+const ERROR_MESSAGES: Record<string, string> = {
+  server_error: "Sign-in failed. Please try again or use email below.",
+  google_denied: "Google sign-in was cancelled.",
+  token_failed: "Google sign-in failed. Try again or use email.",
+  no_id_token: "Google did not return a valid sign-in. Try email.",
+  no_email: "Could not get your email from Google. Try email below.",
+  loop_failed: "Could not create your Loop. Try again or use email.",
+};
+
 function ClaimPageInner() {
   const searchParams = useSearchParams();
   const loopTag = searchParams.get("loop") || "";
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [googleLoaded, setGoogleLoaded] = useState(false);
+
+  // Show error from redirect (e.g. Google OAuth server_error)
+  useEffect(() => {
+    const err = searchParams.get("error");
+    if (err && ERROR_MESSAGES[err]) setError(ERROR_MESSAGES[err]);
+  }, [searchParams]);
 
   // Fallback claim (no Google)
   const [fallbackEmail, setFallbackEmail] = useState("");
@@ -38,7 +53,7 @@ function ClaimPageInner() {
         });
         const data = await res.json();
         if (data.success) {
-          window.location.href = "/dashboard";
+          window.location.href = data.redirectTo || "/dashboard";
         } else {
           setError(data.error || "Failed to sign in");
           setLoading(false);

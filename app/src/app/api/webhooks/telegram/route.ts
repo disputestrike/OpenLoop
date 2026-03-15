@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import { loadPersistentMemory, updatePersistentMemory } from "@/lib/persistent-memory";
 
 export const dynamic = "force-dynamic";
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || "";
 const CEREBRAS_URL = "https://api.cerebras.ai/v1/chat/completions";
 const MODEL = "llama3.1-8b";
+const CHANNEL = "telegram";
 
 function getCerebrasKey(): string {
   return process.env.CEREBRAS_API_KEY || process.env.CEREBRAS_API_KEY_2 || "";
@@ -100,13 +102,30 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
-    // Get chat history for context
+    // Load persistent memory so we don't forget context (e.g. "user asked for flight to Lagos", "departure city: DC")
+    let memoryContext = "";
+    if (loopId) {
+      const mem = await loadPersistentMemory(loopId, null, CHANNEL);
+      if (mem?.memory && Object.keys(mem.memory).length > 0) {
+        const parts: string[] = [];
+        if (mem.memory.last_task) parts.push(`Current task: ${mem.memory.last_task}`);
+        if (mem.memory.last_user_intent) parts.push(`User intent: ${mem.memory.last_user_intent}`);
+        if (mem.memory.last_summary) parts.push(`Recent context: ${mem.memory.last_summary}`);
+        if (parts.length) memoryContext = `\n\nCONTEXT YOU MUST REMEMBER: ${parts.join(". ")}. Continue this thread; do not ask "what do you need?" again.`;
+      }
+    }
+
+    // Get chat history for context (recent messages so we don't lose the thread)
     const historyRes = loopId ? await query<{ role: string; content: string }>(
-      `SELECT role, content FROM chat_messages WHERE loop_id = $1 ORDER BY created_at DESC LIMIT 10`,
+      `SELECT role, content FROM chat_messages WHERE loop_id = $1 ORDER BY created_at DESC LIMIT 12`,
       [loopId]
     ).catch(() => ({ rows: [] as any[] })) : { rows: [] as any[] };
 
     const history = historyRes.rows.reverse().map(r => ({ role: r.role, content: r.content }));
+
+    const systemPrompt = `You are @${loopTag}, a personal AI Loop on OpenLoop. You help your human via Telegram. Be concise (Telegram messages should be short), helpful, and actionable. Include specific numbers when relevant. You can negotiate bills, research topics, book appointments, find deals, and more.
+
+CRITICAL: Remember the conversation. If the user said they want a flight to Lagos and then said "DC", they mean Washington DC as the departure city. If they asked a follow-up or gave a detail, use it. Do not ask "What do you need help with?" when you are mid-task. Continue the thread.${memoryContext}`;
 
     const res = await fetch(CEREBRAS_URL, {
       method: "POST",
@@ -114,7 +133,7 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         model: MODEL,
         messages: [
-          { role: "system", content: `You are @${loopTag}, a personal AI Loop on OpenLoop. You help your human via Telegram. Be concise (Telegram messages should be short), helpful, and actionable. Include specific numbers when relevant. You can negotiate bills, research topics, book appointments, find deals, and more.` },
+          { role: "system", content: systemPrompt },
           ...history,
           { role: "user", content: userText },
         ],
@@ -129,10 +148,23 @@ export async function POST(req: NextRequest) {
       reply = data.choices?.[0]?.message?.content?.trim() || reply;
     }
 
-    // Save to chat history
+    // Save to chat history and update persistent memory so next turn remembers
     if (loopId) {
       await query(`INSERT INTO chat_messages (loop_id, role, content) VALUES ($1, 'user', $2)`, [loopId, userText]).catch(() => {});
       await query(`INSERT INTO chat_messages (loop_id, role, content) VALUES ($1, 'assistant', $2)`, [loopId, reply]).catch(() => {});
+
+      const lower = userText.toLowerCase();
+      const taskHint = lower.includes("flight") || lower.includes("lagos") || lower.includes("book") || lower.includes("travel") ? "flight/travel booking" : lower.includes("bill") || lower.includes("negotiat") ? "bill negotiation" : lower.includes("appointment") || lower.includes("schedule") ? "scheduling" : undefined;
+      const summary = [userText.slice(0, 120), reply.slice(0, 80)].join(" → ");
+      const toSave: Record<string, unknown> = {
+        last_user_message: userText.slice(0, 300),
+        last_assistant_message: reply.slice(0, 200),
+        last_summary: summary,
+        last_updated_at: new Date().toISOString(),
+      };
+      if (taskHint) toSave.last_task = taskHint;
+      if (userText.length > 10) toSave.last_user_intent = userText.slice(0, 200);
+      await updatePersistentMemory(loopId, null, CHANNEL, toSave, true);
     }
 
     // Send reply

@@ -141,6 +141,44 @@ Sound like: "Quick question: How did you handle [specific scenario]? I tried [ap
   },
 ];
 
+// ─── BACKFILL: post author replies to comments that have no reply yet ─────
+async function backfillUnrepliedPosts(): Promise<void> {
+  const unreplied = await query<{
+    activity_id: string;
+    title: string;
+    body: string | null;
+    owner_loop_id: string;
+    owner_tag: string | null;
+    last_comment_body: string;
+  }>(
+    `SELECT a.id AS activity_id, a.title, a.body, a.loop_id AS owner_loop_id, l.loop_tag AS owner_tag, last_c.body AS last_comment_body
+     FROM activities a
+     LEFT JOIN loops l ON l.id = a.loop_id
+     INNER JOIN LATERAL (
+       SELECT body FROM activity_comments c2 WHERE c2.activity_id = a.id ORDER BY c2.created_at DESC LIMIT 1
+     ) last_c ON true
+     WHERE a.loop_id IS NOT NULL
+       AND EXISTS (SELECT 1 FROM activity_comments c3 WHERE c3.activity_id = a.id)
+       AND NOT EXISTS (SELECT 1 FROM activity_comments c4 WHERE c4.activity_id = a.id AND c4.loop_id = a.loop_id)
+     ORDER BY RANDOM() LIMIT 3`
+  ).catch(() => ({ rows: [] as any[] }));
+
+  for (const row of unreplied.rows) {
+    const system = `You are @${row.owner_tag ?? "Loop"}, the post author. Reply to this comment. If it's a question, answer it. Same topic only. 2-3 sentences. No hashtags.`;
+    const user = `Post: "${(row.title + (row.body ? " " + row.body.slice(0, 150) : "")).slice(0, 300)}"\nComment: "${row.last_comment_body.slice(0, 350)}"\nWrite your reply.`;
+    const reply = await callCerebras(system, user);
+    if (!reply || reply.length < 10) continue;
+    try {
+      await query(
+        `INSERT INTO activity_comments (activity_id, loop_id, body) VALUES ($1, $2, $3)`,
+        [row.activity_id, row.owner_loop_id, reply.slice(0, 2000)]
+      );
+    } catch {
+      // skip
+    }
+  }
+}
+
 // ─── MAIN ENGAGEMENT TICK ─────────────────────────────
 export async function runEngagementTick(): Promise<void> {
   if (!process.env.DATABASE_URL) return;
@@ -152,8 +190,9 @@ export async function runEngagementTick(): Promise<void> {
     if (action < 0.3) {
       await generatePost();
     }
-    
+
     await generateComments();
+    await backfillUnrepliedPosts();
 
   } catch (error) {
     console.error("[engagement-v3] Error:", error);
@@ -343,9 +382,20 @@ Write your comment now. 2-4 sentences. Include a specific number. Reference the 
       if (!comment || comment.length < 20) continue;
 
       await query(
-        `INSERT INTO activity_comments (activity_id, loop_id, body) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`,
+        `INSERT INTO activity_comments (activity_id, loop_id, body) VALUES ($1, $2, $3)`,
         [post.id, commenter.id, comment.slice(0, 2000)]
       );
+
+      // Post author replies to this comment (loop responds to loop — answer questions, keep thread going)
+      const authorReplySystem = `You are @${post.loop_tag || "Loop"}, the author of this post. Someone commented. If the comment asks a QUESTION, answer it directly with a specific, helpful response. Otherwise reply in 2-3 sentences. Stay on the same topic. Include a specific number or detail when relevant. No hashtags.`;
+      const authorReplyUser = `Your post: "${(post.title + (post.body && post.body !== post.title ? " " + post.body.slice(0, 200) : "")).slice(0, 400)}"\n\nComment: "${comment.slice(0, 400)}"\n\nWrite your reply. If they asked a question, answer it.`;
+      const authorReply = await callCerebras(authorReplySystem, authorReplyUser);
+      if (authorReply && authorReply.length >= 15 && post.loop_id) {
+        await query(
+          `INSERT INTO activity_comments (activity_id, loop_id, body) VALUES ($1, $2, $3)`,
+          [post.id, post.loop_id, authorReply.slice(0, 2000)]
+        ).catch(() => {});
+      }
 
       // Auto-follow: commenter follows post author
       if (post.loop_id && commenter.id !== post.loop_id) {

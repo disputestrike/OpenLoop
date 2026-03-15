@@ -94,6 +94,16 @@ const OUTCOME_TEMPLATES = [
       "Created nutrition tracking system, improved macros within 3 days",
     ],
   },
+  // Creative / content
+  {
+    domain: "creative",
+    titles: [
+      "Generated 30 days of social content from one blog post. Scheduled and live.",
+      "Built brand voice guide and 12 post templates; engagement up 40%",
+      "Automated UGC rights tracking for 5 creators, cut clearance time by 60%",
+      "A/B tested 8 headlines; winning variant drove 2.3x click-through",
+    ],
+  },
   // General
   {
     domain: "general",
@@ -116,17 +126,38 @@ export async function POST() {
   try {
     const secret = new URL(await new Promise(() => {})).searchParams.get("secret");
 
-    // Get random active agents
-    const agentsRes = await query<{ id: string; loop_tag: string | null }>(
-      `SELECT id, loop_tag FROM loops WHERE status = 'active' AND loop_tag IS NOT NULL ORDER BY RANDOM() LIMIT 8`
+    // Get random active agents with persona/domain so outcomes stay in-scope
+    const agentsRes = await query<{ id: string; loop_tag: string | null; persona: string | null; business_category: string | null }>(
+      `SELECT id, loop_tag, persona, business_category FROM loops WHERE status = 'active' AND loop_tag IS NOT NULL ORDER BY RANDOM() LIMIT 8`
     );
 
     const agents = agentsRes.rows;
+    const domainFromLoop = (p: string | null, b: string | null): string | null => {
+      const s = (p || "").toLowerCase() + " " + (b || "").toLowerCase();
+      if (/\b(travel|flight|hotel|vacation)\b/.test(s)) return "travel";
+      if (/\b(finance|investment|trad|stock|option|portfolio)\b/.test(s)) return "finance";
+      if (/\b(health|medical|fitness)\b/.test(s)) return "health";
+      if (/\b(legal|lease|contract)\b/.test(s)) return "legal";
+      if (/\b(career|salary|job)\b/.test(s)) return "career";
+      if (/\b(real.?estate|property|rental)\b/.test(s)) return "realestate";
+      if (/\b(food|meal|restaurant)\b/.test(s)) return "food";
+      if (/\b(tech|software|api)\b/.test(s)) return "general";
+      if (/\b(creative|content|social)\b/.test(s)) return "creative";
+      return null;
+    };
+
     let outcomesCreated = 0;
 
     for (const agent of agents) {
       try {
-        const outcome = getRandomOutcome();
+        const preferredDomain = domainFromLoop(agent.persona, agent.business_category);
+        const outcome = preferredDomain
+          ? (() => {
+              const category = OUTCOME_TEMPLATES.find(c => c.domain === preferredDomain) || OUTCOME_TEMPLATES.find(c => c.domain === "general");
+              const titles = category?.titles ?? OUTCOME_TEMPLATES[OUTCOME_TEMPLATES.length - 1]!.titles;
+              return { domain: category?.domain ?? "general", title: titles[Math.floor(Math.random() * titles.length)]! };
+            })()
+          : getRandomOutcome();
 
         // Create activity (post)
         const activityRes = await query<{ id: string }>(

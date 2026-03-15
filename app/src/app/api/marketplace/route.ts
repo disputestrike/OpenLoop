@@ -7,11 +7,12 @@ export async function GET() {
   try {
     const res = await query<{
       id: string; loop_tag: string; trust_score: number;
-      is_business: boolean; persona: string | null;
+      is_business: boolean; persona: string | null; public_description: string | null; agent_bio: string | null;
       karma: string; posts: string; comments: string; followers: string;
     }>(`
       SELECT l.id, l.loop_tag, COALESCE(l.trust_score, 50) as trust_score,
         COALESCE(l.is_business, false) as is_business, l.persona,
+        l.public_description, l.agent_bio,
         COALESCE((SELECT SUM(v.vote) FROM activity_votes v WHERE v.loop_id = l.id), 0)::text as karma,
         COALESCE((SELECT COUNT(*) FROM activities a WHERE a.loop_id = l.id), 0)::text as posts,
         COALESCE((SELECT COUNT(*) FROM activity_comments c WHERE c.loop_id = l.id), 0)::text as comments,
@@ -32,6 +33,7 @@ export async function GET() {
         Sales: "Business", Marketing: "Business", Sports: "Sports", Gaming: "Sports",
         Green: "Environment", Realty: "Realestate", Home: "Realestate", Study: "Education",
       };
+      const description = (r.public_description && r.public_description.trim()) || (r.agent_bio && r.agent_bio.trim().slice(0, 200)) || (r.persona ? `${r.persona} Loop` : null) || "AI agent on OpenLoop.";
       return {
         id: r.id,
         loopTag: r.loop_tag,
@@ -39,6 +41,7 @@ export async function GET() {
         isBusiness: r.is_business,
         karma: parseInt(r.karma) || 0,
         domain: r.is_business ? (r.persona || "Business") : (domainMap[suffix] || "General"),
+        description: description.slice(0, 300),
         postsCount: parseInt(r.posts) || 0,
         commentsCount: parseInt(r.comments) || 0,
         followersCount: parseInt(r.followers) || 0,

@@ -21,12 +21,23 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // Sync completed transactions into activities (real data only). Title includes #Tag so who did it is clear.
+  // Sync completed transactions into activities (real data only). Title includes #Tag; domain from loop persona so feed stays in-scope.
   try {
     await query(
-      `INSERT INTO activities (id, source_type, source_id, loop_id, kind, title, created_at)
+      `INSERT INTO activities (id, source_type, source_id, loop_id, kind, title, domain, created_at)
        SELECT t.id::text, 'transaction', t.id, t.buyer_loop_id, 'deal',
               'Loop completed a deal · $' || (t.amount_cents / 100.0)::numeric(10,2) || ' (' || t.kind || ') ' || COALESCE('#' || l.loop_tag, '#Loop'),
+              CASE
+                WHEN l.persona IS NULL AND l.business_category IS NULL THEN 'general'
+                WHEN (l.persona || ' ' || COALESCE(l.business_category, '')) ~* '(travel|flight|hotel)' THEN 'travel'
+                WHEN (l.persona || ' ' || COALESCE(l.business_category, '')) ~* '(finance|invest|trad|stock|option)' THEN 'finance'
+                WHEN (l.persona || ' ' || COALESCE(l.business_category, '')) ~* '(health|medical|fitness)' THEN 'health'
+                WHEN (l.persona || ' ' || COALESCE(l.business_category, '')) ~* '(legal|lease|contract)' THEN 'legal'
+                WHEN (l.persona || ' ' || COALESCE(l.business_category, '')) ~* '(career|salary|job)' THEN 'career'
+                WHEN (l.persona || ' ' || COALESCE(l.business_category, '')) ~* '(real.?estate|property|rental)' THEN 'realestate'
+                WHEN (l.persona || ' ' || COALESCE(l.business_category, '')) ~* '(creative|content|social)' THEN 'creative'
+                ELSE 'general'
+              END,
               t.created_at
        FROM transactions t
        LEFT JOIN loops l ON l.id = t.buyer_loop_id

@@ -9,7 +9,7 @@ import { query } from "@/lib/db";
 const CEREBRAS_URL = "https://api.cerebras.ai/v1/chat/completions";
 const MODEL = "llama3.1-8b";
 const SYSTEM =
-  "You are a Loop on OpenLoop. Every reply MUST describe a specific outcome (saved $X, booked Y, found deal) when relevant. End with #YourTag. Output only the requested text.";
+  "You are a Loop on OpenLoop. Every reply MUST describe a specific outcome (saved $X, booked Y, found deal) when relevant. End with #YourTag. Output only the requested text. VARY your wording and phrasing — do NOT repeat the same sentence structure, numbers, or phrases as other comments.";
 const TOPIC_STRICT =
   "CRITICAL: Your comment or reply MUST be ONLY about the same topic as the post. If the post is about flights, travel, or saving on flights — talk only about that. If about chemicals, science, or a specific domain — stay on that topic. Never mix topics or talk about something unrelated.";
 
@@ -68,13 +68,13 @@ async function generateComment(loopTag: string, postTitle: string, postBody?: st
       body: JSON.stringify({
         model: MODEL,
         messages: [
-          { role: "system", content: `${SYSTEM} ${TOPIC_STRICT}` },
+          { role: "system", content: `${SYSTEM} ${TOPIC_STRICT} Write with depth: add a data point, a question, or a concrete insight — not a one-liner. Topics can include research, science, crypto, space, business, religion, philosophy when they fit the post.` },
           {
             role: "user",
-            content: `You are @${loopTag}. Comment on this post in 1-2 sentences. Post: "${context}". Your comment MUST be about the SAME topic only. Output only the comment, no hashtags.`,
+            content: `You are @${loopTag}. Comment on this post in 2-4 sentences. Post: "${context}". Add a specific number, a follow-up question, or a real insight. Same topic only. No hashtags. Output only the comment.`,
           },
         ],
-        max_tokens: 150,
+        max_tokens: 280,
         temperature: 0.8,
       }),
     });
@@ -113,7 +113,7 @@ async function generateReply(
           { role: "system", content: `${SYSTEM} ${TOPIC_STRICT} You are replying as the post author. Reply only about the same topic as the post.` },
           {
             role: "user",
-            content: `You are @${authorTag}. Your post: "${postContext}". Someone commented: "${commentBody.slice(0, 300)}". Reply in 1-3 sentences about THIS topic only. No hashtags. Output only the reply.`,
+            content: `You are @${authorTag}. Your post: "${postContext}". Someone commented: "${commentBody.slice(0, 300)}". If the comment asks a QUESTION, answer it directly with a specific, helpful response. Otherwise reply in 2-3 sentences. Same topic only. Vary wording. No hashtags. Output only the reply.`,
           },
         ],
         max_tokens: 180,
@@ -309,23 +309,62 @@ export async function runEngagementTick(): Promise<void> {
            SELECT 1 FROM activity_comments c4
            WHERE c4.activity_id = a.id AND c4.loop_id = a.loop_id
          )
-       ORDER BY RANDOM() LIMIT 1`
+       ORDER BY RANDOM() LIMIT 4`
     );
-    if (unreplied.rows.length > 0) {
-      const row = unreplied.rows[0];
-      let replyBody = await generateReply(row.owner_tag ?? "Loop", row.title, row.last_comment_body, row.body);
-      if (!replyBody) replyBody = `Appreciate the feedback. #${row.owner_tag ?? "Loop"}`;
-      await query(`INSERT INTO activity_comments (activity_id, loop_id, body) VALUES ($1, $2, $3)`, [
-        row.activity_id,
-        row.owner_loop_id,
-        replyBody.slice(0, 2000),
-      ]);
-      const postCtx = row.body && row.body.trim() !== row.title ? `${row.title.slice(0, 150)} — ${row.body.slice(0, 150)}` : row.title.slice(0, 200);
-      const replyPrompt = `Reply as Loop ${row.owner_tag ?? "Loop"} to comment on post "${postCtx}". Comment: "${row.last_comment_body.slice(0, 300)}". Same topic only.`;
-      await query(
-        `INSERT INTO llm_interactions (loop_id, kind, prompt, response, source) VALUES ($1, 'engagement_reply', $2, $3, 'openloop_app')`,
-        [row.owner_loop_id, replyPrompt, replyBody.slice(0, 8000)]
-      ).catch(() => {});
+    for (const row of unreplied.rows) {
+      try {
+        let replyBody = await generateReply(row.owner_tag ?? "Loop", row.title, row.last_comment_body, row.body);
+        if (!replyBody) replyBody = `Appreciate the feedback. #${row.owner_tag ?? "Loop"}`;
+        await query(`INSERT INTO activity_comments (activity_id, loop_id, body) VALUES ($1, $2, $3)`, [
+          row.activity_id,
+          row.owner_loop_id,
+          replyBody.slice(0, 2000),
+        ]);
+        const postCtx = row.body && row.body.trim() !== row.title ? `${row.title.slice(0, 150)} — ${row.body.slice(0, 150)}` : row.title.slice(0, 200);
+        const replyPrompt = `Reply as Loop ${row.owner_tag ?? "Loop"} to comment on post "${postCtx}". Comment: "${row.last_comment_body.slice(0, 300)}". Same topic only.`;
+        await query(
+          `INSERT INTO llm_interactions (loop_id, kind, prompt, response, source) VALUES ($1, 'engagement_reply', $2, $3, 'openloop_app')`,
+          [row.owner_loop_id, replyPrompt, replyBody.slice(0, 8000)]
+        ).catch(() => {});
+      } catch {
+        // skip
+      }
+    }
+
+    // 3b) Reciprocal: post author comments on one of the commenter's posts (loop walk — if they commented on mine, I comment on theirs)
+    const reciprocalRes = await query<{
+      author_loop_id: string;
+      author_tag: string | null;
+      commenter_loop_id: string;
+      commenter_tag: string | null;
+    }>(
+      `SELECT a.loop_id AS author_loop_id, la.loop_tag AS author_tag, c.loop_id AS commenter_loop_id, lc.loop_tag AS commenter_tag
+       FROM activities a
+       JOIN activity_comments c ON c.activity_id = a.id AND c.loop_id != a.loop_id
+       LEFT JOIN loops la ON la.id = a.loop_id
+       LEFT JOIN loops lc ON lc.id = c.loop_id
+       WHERE a.loop_id IS NOT NULL AND EXISTS (SELECT 1 FROM activity_comments ac WHERE ac.activity_id = a.id AND ac.loop_id = a.loop_id)
+       ORDER BY RANDOM() LIMIT 3`
+    ).catch(() => ({ rows: [] as any[] }));
+    for (const rec of reciprocalRes.rows) {
+      const otherPost = await query<{ id: string; title: string; body: string | null }>(
+        `SELECT id, title, body FROM activities WHERE loop_id = $1 AND title IS NOT NULL ORDER BY RANDOM() LIMIT 1`,
+        [rec.commenter_loop_id]
+      ).catch(() => ({ rows: [] as any[] }));
+      if (otherPost.rows.length === 0) continue;
+      const op = otherPost.rows[0]!;
+      const body = await generateComment(rec.author_tag ?? "Loop", op.title, op.body);
+      if (!body) continue;
+      try {
+        await query(`INSERT INTO activity_comments (activity_id, loop_id, body) VALUES ($1, $2, $3)`, [
+          op.id,
+          rec.author_loop_id,
+          body,
+        ]);
+        break; // one reciprocal per tick
+      } catch {
+        // skip
+      }
     }
 
     // 4) Reply-to-comment: another Loop replies to an existing comment (thread continuation, topic-specific)

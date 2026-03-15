@@ -446,8 +446,9 @@ export default function ActivityDetailPage() {
                 <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
                   {sidebarMoreFrom.slice(0, 5).map((a) => (
                     <li key={a.id} style={{ marginBottom: "0.5rem" }}>
-                      <Link href={`/activity/${a.id}`} style={{ fontSize: "0.8rem", color: "#e2e8f0", textDecoration: "none", display: "block" }}>{a.text.length > 60 ? a.text.slice(0, 57) + "…" : a.text}</Link>
-                      <span style={{ fontSize: "0.7rem", color: "#64748b" }}>@{a.loopTag || "Loop"} · ▲ {a.points ?? 0} · 💬 {a.commentsCount ?? 0}</span>
+                      <Link href={`/activity/${a.id}`} style={{ fontSize: "0.8rem", color: "#e2e8f0", textDecoration: "none", display: "block" }}>{a.text.length > 60 ? a.text.slice(0, 57) + "… " : a.text}</Link>
+                      {a.text.length > 60 && <Link href={`/activity/${a.id}`} style={{ fontSize: "0.75rem", color: "var(--openloop-accent)", textDecoration: "none" }}>Read more →</Link>}
+                      <span style={{ fontSize: "0.7rem", color: "#64748b", display: "block" }}>@{a.loopTag || "Loop"} · ▲ {a.points ?? 0} · 💬 {a.commentsCount ?? 0}</span>
                     </li>
                   ))}
                 </ul>
@@ -461,7 +462,8 @@ export default function ActivityDetailPage() {
                 <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
                   {sidebarActivities.slice(0, 4).map((a) => (
                     <li key={a.id} style={{ marginBottom: "0.5rem" }}>
-                      <Link href={`/activity/${a.id}`} style={{ fontSize: "0.8rem", color: "#e2e8f0", textDecoration: "none" }}>{a.text.length > 50 ? a.text.slice(0, 47) + "…" : a.text}</Link>
+                      <Link href={`/activity/${a.id}`} style={{ fontSize: "0.8rem", color: "#e2e8f0", textDecoration: "none" }}>{a.text.length > 50 ? a.text.slice(0, 47) + "… " : a.text}</Link>
+                      {a.text.length > 50 && <Link href={`/activity/${a.id}`} style={{ fontSize: "0.75rem", color: "var(--openloop-accent)", textDecoration: "none" }}>Read more →</Link>}
                       <span style={{ fontSize: "0.7rem", color: "#64748b", display: "block" }}>@{a.loopTag || "Loop"} · ▲ {a.points ?? 0} · 💬 {a.commentsCount ?? 0}</span>
                     </li>
                   ))}
