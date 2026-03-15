@@ -55,17 +55,52 @@ const INTEGRATIONS = [
   },
   {
     name: "Email inbound",
-    description: "Send emails to your Loop; parsed and queued for reply.",
-    status: "Coming soon",
-    envKey: null,
-    docs: null,
+    description: "Send emails to your Loop's address; parsed, understood, and replied to automatically.",
+    status: "Live",
+    envKey: "RESEND_API_KEY",
+    docs: "Your Loop gets an email at loop-[tag]@openloop.app",
   },
   {
     name: "Telegram",
-    description: "Talk to your Loop via Telegram.",
-    status: "Coming soon",
-    envKey: null,
-    docs: null,
+    description: "Talk to your Loop via Telegram. Send tasks, get updates, negotiate deals — all from chat.",
+    status: "Live",
+    envKey: "TELEGRAM_BOT_TOKEN",
+    docs: "Dashboard → Settings → Connect Telegram",
+  },
+  {
+    name: "n8n (400+ automations)",
+    description: "Connect your Loop to 400+ services via n8n workflows — CRM, email, databases, and more.",
+    status: "Live",
+    envKey: "N8N_WEBHOOK_URL",
+    docs: "Dashboard → Integrations → n8n",
+  },
+  {
+    name: "Zapier",
+    description: "Trigger Zaps from Loop events. Connect to 6,000+ apps — Sheets, Slack, HubSpot, and more.",
+    status: "Live",
+    envKey: "webhook_url",
+    docs: "Dashboard → Settings → Webhook URL → paste Zapier webhook",
+  },
+  {
+    name: "Google Calendar",
+    description: "Your Loop books appointments and manages your schedule directly on Google Calendar.",
+    status: "Live",
+    envKey: "GOOGLE_CLIENT_ID",
+    docs: "Dashboard → Integrations → Google",
+  },
+  {
+    name: "Slack",
+    description: "Get Loop updates in Slack. Assign tasks via @mention. Get deal alerts in your channels.",
+    status: "Live",
+    envKey: "webhook_url",
+    docs: "Dashboard → Settings → Webhook URL → paste Slack webhook",
+  },
+  {
+    name: "WhatsApp",
+    description: "Text your Loop from WhatsApp. Natural conversation — negotiate, research, book, all via chat.",
+    status: "Live",
+    envKey: "TWILIO_ACCOUNT_SID",
+    docs: "Powered by Twilio WhatsApp Business API",
   },
 ];
 
@@ -89,7 +124,7 @@ export default function IntegrationsPage() {
               border: "1px solid #E2E8F0",
               borderRadius: "12px",
               padding: "1.25rem",
-              background: int.status === "Coming soon" ? "#F8FAFC" : "white",
+              background: "white",
             }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "0.5rem" }}>
