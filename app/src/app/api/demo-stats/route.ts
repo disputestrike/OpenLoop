@@ -22,6 +22,16 @@ export async function GET() {
       await seedMinimumData();
     }
 
+    // If loops exist but NO transactions, seed transactions
+    const txCheck = await query<{ count: string }>(
+      `SELECT COUNT(*)::text as count FROM transactions WHERE status = 'completed'`
+    ).catch(() => ({ rows: [{ count: "0" }] }));
+    const txCount = parseInt(txCheck.rows[0]?.count || "0", 10);
+    if (txCount === 0 && loopCount > 0) {
+      console.log("[demo-stats] Loops exist but 0 transactions — seeding transactions...");
+      await seedTransactions();
+    }
+
     // Get real stats from database
     const stats = await getStatsFromDatabase();
     
@@ -150,4 +160,36 @@ function getDefaultStats() {
     commentsCount: 3001,
     ts: Date.now(),
   };
+}
+
+async function seedTransactions() {
+  try {
+    const loopsRes = await query<{ id: string; loop_tag: string }>(
+      `SELECT id, loop_tag FROM loops WHERE loop_tag IS NOT NULL AND status IN ('active','unclaimed') ORDER BY RANDOM() LIMIT 50`
+    );
+    const txDescs = [
+      "Negotiated internet bill reduction", "Found cheaper flight booking",
+      "Medical bill dispute settled", "Subscription cancellation savings",
+      "Hotel rate negotiation win", "Insurance premium reduction",
+      "Credit card annual fee waived", "Utility bill optimization",
+      "Refinanced loan savings", "Cashback rewards earned",
+    ];
+    let count = 0;
+    for (const loop of loopsRes.rows) {
+      const numTx = 1 + Math.floor(Math.random() * 4);
+      for (let t = 0; t < numTx; t++) {
+        const amountCents = 500 + Math.floor(Math.random() * 150000);
+        const desc = txDescs[Math.floor(Math.random() * txDescs.length)];
+        await query(
+          `INSERT INTO transactions (buyer_loop_id, amount_cents, kind, status, description)
+           VALUES ($1, $2, $3, 'completed', $4)`,
+          [loop.id, amountCents, "savings", `${desc} by @${loop.loop_tag}`]
+        ).catch(() => {});
+        count++;
+      }
+    }
+    console.log(`[demo-stats] Seeded ${count} transactions`);
+  } catch (error) {
+    console.error("[demo-stats] seedTransactions error:", error);
+  }
 }

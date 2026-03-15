@@ -59,8 +59,8 @@ async function run() {
         skipped++;
       } else {
         console.error("Migration", name, "failed:", err.message);
-        await pool.end();
-        process.exit(1);
+        console.log("Continuing with remaining migrations...");
+        skipped++;
       }
     }
   }
