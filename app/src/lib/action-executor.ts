@@ -69,7 +69,7 @@ async function executeNegotiation(loopId: string, businessName: string, subject:
 
   // Create order record
   await query(
-    `INSERT INTO agent_orders (loop_id, order_type, target_business, description, amount_cents, status, approval_message)
+    `INSERT INTO loop_agent_orders (loop_id, order_type, target_business, description, estimated_cost_cents, status, result_summary)
      VALUES ($1, 'negotiation', $2, $3, $4, 'completed', $5)`,
     [loopId, bizName, `Negotiated ${subject}`, savingsCents, negotiationResult]
   ).catch(() => {});
@@ -148,7 +148,7 @@ async function executeOrder(loopId: string, orderType: string, subject: string, 
 
   // Create order
   await query(
-    `INSERT INTO agent_orders (loop_id, order_type, target_business, description, amount_cents, status, approval_message)
+    `INSERT INTO loop_agent_orders (loop_id, order_type, target_business, description, estimated_cost_cents, status, result_summary)
      VALUES ($1, $2, $3, $4, $5, 'completed', $6)`,
     [loopId, orderType, businessName || "general", subject.slice(0, 200), amountCents, orderResult]
   ).catch(() => {});

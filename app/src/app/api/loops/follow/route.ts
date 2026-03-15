@@ -11,6 +11,13 @@ export const dynamic = "force-dynamic";
  */
 export async function POST(req: NextRequest) {
   try {
+    // Ensure table exists
+    await query(`CREATE TABLE IF NOT EXISTS loop_follows (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(), follower_loop_id UUID NOT NULL REFERENCES loops(id) ON DELETE CASCADE,
+      following_loop_id UUID NOT NULL REFERENCES loops(id) ON DELETE CASCADE, created_at TIMESTAMPTZ DEFAULT now(),
+      UNIQUE(follower_loop_id, following_loop_id)
+    )`).catch(() => {});
+
     const session = await getSessionFromCookies();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 

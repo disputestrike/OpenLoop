@@ -170,7 +170,7 @@ export async function POST(req: NextRequest) {
     if (negResult.outcome === "deal") {
       const savingsCents = 2000 + Math.floor(Math.random() * 8000);
       await query(`INSERT INTO loop_wallet_events (loop_id, event_type, amount_cents, platform_fee_cents, net_cents, description, verification_tier) VALUES ($1, 'savings', $2, 0, $2, $3, 'sandbox')`, [loopId, savingsCents, `Savings from @${negResult.businessLoopTag} negotiation`]).catch(() => {});
-      await query(`INSERT INTO agent_orders (loop_id, order_type, target_business, description, amount_cents, status, approval_message) VALUES ($1, 'negotiation', $2, $3, $4, 'completed', $5)`, [loopId, negResult.businessLoopTag, intent.subject || "bill negotiation", savingsCents, reply]).catch(() => {});
+      await query(`INSERT INTO loop_agent_orders (loop_id, order_type, target_business, description, estimated_cost_cents, status, result_summary) VALUES ($1, 'negotiation', $2, $3, $4, 'completed', $5)`, [loopId, negResult.businessLoopTag, intent.subject || "bill negotiation", savingsCents, reply]).catch(() => {});
     }
 
     return NextResponse.json({ reply, intent: "negotiate", negotiationResult: { outcome: negResult.outcome, agreedValue: negResult.agreedValue, businessLoopTag: negResult.businessLoopTag, rounds: negResult.rounds.length } });
