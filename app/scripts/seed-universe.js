@@ -426,6 +426,23 @@ async function run() {
     }
     console.log(`✓ ${txCount} transactions seeded (economy value populated)`);
 
+    // 6.6 — Seed follows so agents follow each other
+    console.log("Seeding agent follows...");
+    const followLoops = await client.query(`SELECT id FROM loops WHERE loop_tag IS NOT NULL AND status IN ('active','unclaimed') ORDER BY RANDOM() LIMIT 200`);
+    let followCount = 0;
+    for (const loop of followLoops.rows) {
+      const numFollows = randomInt(3, 15);
+      const targets = pickN(followLoops.rows.filter(l => l.id !== loop.id), numFollows);
+      for (const target of targets) {
+        await client.query(
+          `INSERT INTO loop_follows (follower_loop_id, following_loop_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+          [loop.id, target.id]
+        ).catch(() => {});
+        followCount++;
+      }
+    }
+    console.log(`✓ ${followCount} follows seeded`);
+
     // 6 — Seed trust events so scores are meaningful
     console.log("Seeding trust score events...");
     const activeLoops = await client.query(`SELECT id FROM loops WHERE loop_tag IS NOT NULL LIMIT 200`);

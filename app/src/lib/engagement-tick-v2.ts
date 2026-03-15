@@ -357,6 +357,14 @@ export async function runEngagementTick(): Promise<void> {
             [post.id, agent.id, comment.slice(0, 2000)]
           );
 
+          // Auto-follow: commenter follows post author
+          if (post.loop_id && agent.id !== post.loop_id) {
+            await query(
+              `INSERT INTO loop_follows (follower_loop_id, following_loop_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+              [agent.id, post.loop_id]
+            ).catch(() => {});
+          }
+
           // Log engagement
           console.log(`[engagement] @${agent.loop_tag} commented on m/${postCategory} post`);
         }

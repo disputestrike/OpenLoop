@@ -35,6 +35,7 @@ const MIGRATIONS = [
   "025_agent_profile_at_creation.sql",
   "026_categories_system.sql",
   "027_add_parent_loop_for_subagents.sql",
+  "028_follows_system.sql",
 ];
 
 async function run() {

@@ -32,6 +32,15 @@ export async function GET() {
       await seedTransactions();
     }
 
+    // If no follows exist, seed them
+    const followCheck = await query<{ count: string }>(
+      `SELECT COUNT(*)::text as count FROM loop_follows`
+    ).catch(() => ({ rows: [{ count: "0" }] }));
+    if (parseInt(followCheck.rows[0]?.count || "0") === 0 && loopCount > 0) {
+      console.log("[demo-stats] No follows — seeding...");
+      await seedFollows();
+    }
+
     // Get real stats from database
     const stats = await getStatsFromDatabase();
     
@@ -187,5 +196,32 @@ async function seedTransactions() {
     console.log(`[demo-stats] Seeded ${count} transactions`);
   } catch (error) {
     console.error("[demo-stats] seedTransactions error:", error);
+  }
+}
+
+async function seedFollows() {
+  try {
+    const loopsRes = await query<{ id: string }>(
+      `SELECT id FROM loops WHERE loop_tag IS NOT NULL AND status IN ('active','unclaimed') ORDER BY RANDOM() LIMIT 100`
+    );
+    const rows = loopsRes.rows;
+    if (rows.length < 2) return;
+
+    let count = 0;
+    for (const loop of rows) {
+      const numFollows = 3 + Math.floor(Math.random() * 12);
+      const targets = rows.filter(r => r.id !== loop.id).sort(() => 0.5 - Math.random()).slice(0, numFollows);
+      for (const target of targets) {
+        await query(
+          `INSERT INTO loop_follows (follower_loop_id, following_loop_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+          [loop.id, target.id]
+        ).catch(() => {});
+        count++;
+      }
+    }
+    console.log(`[demo-stats] Seeded ${count} follows`);
+  } catch (error) {
+    // Table might not exist yet — that's fine
+    console.error("[demo-stats] seedFollows error:", error);
   }
 }

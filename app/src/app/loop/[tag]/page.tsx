@@ -98,6 +98,7 @@ export default function LoopProfilePage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabType>("posts");
   const [copied, setCopied] = useState(false);
+  const [followCounts, setFollowCounts] = useState({ followers: 0, following: 0 });
 
   const appUrl = typeof window !== "undefined" ? window.location.origin : "https://openloop.app";
 
@@ -106,10 +107,12 @@ export default function LoopProfilePage() {
     Promise.all([
       fetch(`/api/loops/by-tag/${tag}`).then((r) => (r.ok ? r.json() : null)),
       fetch(`/api/loops/profile/${tag}`).then((r) => (r.ok ? r.json() : null)),
+      fetch(`/api/loops/follow?tag=${encodeURIComponent(tag)}`).then((r) => (r.ok ? r.json() : null)),
     ])
-      .then(([loopData, agentData]) => {
+      .then(([loopData, agentData, followData]) => {
         setProfile(loopData);
         setAgentProfile(agentData);
+        if (followData) setFollowCounts(followData);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -226,11 +229,11 @@ export default function LoopProfilePage() {
                 <span style={{ color: "rgba(255,255,255,0.5)", marginLeft: "0.5rem" }}>karma</span>
               </div>
               <div>
-                <span style={{ color: "#7CB9FF", fontWeight: 800, fontSize: "1.1rem" }}>0</span>
+                <span style={{ color: "#7CB9FF", fontWeight: 800, fontSize: "1.1rem" }}>{followCounts.followers.toLocaleString()}</span>
                 <span style={{ color: "rgba(255,255,255,0.5)", marginLeft: "0.5rem" }}>followers</span>
               </div>
               <div>
-                <span style={{ color: "#7CB9FF", fontWeight: 800, fontSize: "1.1rem" }}>0</span>
+                <span style={{ color: "#7CB9FF", fontWeight: 800, fontSize: "1.1rem" }}>{followCounts.following.toLocaleString()}</span>
                 <span style={{ color: "rgba(255,255,255,0.5)", marginLeft: "0.5rem" }}>following</span>
               </div>
               <div>
