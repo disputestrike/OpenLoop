@@ -9,21 +9,17 @@ const SESSION_COOKIE = "openloop-session";
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "899774775993-smp583hfh7ja2t0npvjhee004oeno81p.apps.googleusercontent.com";
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || "";
 
-/**
- * GET /api/auth/google-redirect
- * Google OAuth callback — exchanges code for tokens, creates session
- */
 export async function GET(req: NextRequest) {
   const fwdHost = req.headers.get("x-forwarded-host");
-  const origin = process.env.NEXT_PUBLIC_APP_URL || (fwdHost ? `https://${fwdHost}` : req.nextUrl.origin);
+  const origin = process.env.NEXT_PUBLIC_APP_URL || (fwdHost ? `https://${fwdHost}` : "https://openloop-production.up.railway.app");
 
   try {
     const code = req.nextUrl.searchParams.get("code");
-    const state = req.nextUrl.searchParams.get("state") || ""; // loopTag
+    const state = req.nextUrl.searchParams.get("state") || "";
     const error = req.nextUrl.searchParams.get("error");
 
     if (error || !code) {
-      return NextResponse.redirect(new URL("/claim?error=google_denied", origin));
+      return NextResponse.redirect(`${origin}/claim?error=google_denied`);
     }
 
     // Exchange code for tokens
@@ -40,25 +36,20 @@ export async function GET(req: NextRequest) {
     });
 
     if (!tokenRes.ok) {
-      console.error("[google-redirect] Token exchange failed:", await tokenRes.text());
-      return NextResponse.redirect(new URL("/claim?error=token_failed", origin));
+      const errText = await tokenRes.text();
+      console.error("[google-redirect] Token exchange failed:", errText);
+      return NextResponse.redirect(`${origin}/claim?error=token_failed`);
     }
 
     const tokens = await tokenRes.json();
     const idToken = tokens.id_token;
+    if (!idToken) return NextResponse.redirect(`${origin}/claim?error=no_id_token`);
 
-    if (!idToken) {
-      return NextResponse.redirect(new URL("/claim?error=no_id_token", origin));
-    }
-
-    // Decode ID token JWT
+    // Decode JWT
     const parts = idToken.split(".");
     const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString("utf-8"));
-    const { email, sub, name } = payload;
-
-    if (!email) {
-      return NextResponse.redirect(new URL("/claim?error=no_email", origin));
-    }
+    const { email, name } = payload;
+    if (!email) return NextResponse.redirect(`${origin}/claim?error=no_email`);
 
     // Ensure tables
     await query(`CREATE TABLE IF NOT EXISTS loop_sessions (
@@ -66,54 +57,91 @@ export async function GET(req: NextRequest) {
       token TEXT UNIQUE NOT NULL, expires_at TIMESTAMPTZ NOT NULL DEFAULT NOW() + INTERVAL '90 days', created_at TIMESTAMPTZ DEFAULT NOW()
     )`).catch(() => {});
 
-    // Find or create human
-    let humanRes = await query<{ id: string }>(`SELECT id FROM humans WHERE email = $1`, [email]).catch(() => ({ rows: [] as any[] }));
+    // Find or create human by email
     let humanId: string;
-    if (humanRes.rows[0]) {
-      humanId = humanRes.rows[0].id;
+    const existingHuman = await query<{ id: string }>(`SELECT id FROM humans WHERE email = $1`, [email]).catch(() => ({ rows: [] as any[] }));
+    if (existingHuman.rows[0]) {
+      humanId = existingHuman.rows[0].id;
     } else {
       humanId = crypto.randomUUID();
-      await query(`INSERT INTO humans (id, email, created_at) VALUES ($1, $2, NOW()) ON CONFLICT (email) DO NOTHING`, [humanId, email]).catch(() => {});
+      await query(`INSERT INTO humans (id, email, created_at) VALUES ($1, $2, NOW()) ON CONFLICT (email) DO NOTHING`, [humanId, email]);
+      // Re-fetch in case ON CONFLICT triggered
+      const refetch = await query<{ id: string }>(`SELECT id FROM humans WHERE email = $1`, [email]).catch(() => ({ rows: [] as any[] }));
+      if (refetch.rows[0]) humanId = refetch.rows[0].id;
     }
 
     // Find existing loop for this human
-    let loopRes = await query<{ id: string }>(`SELECT id FROM loops WHERE human_id = $1 LIMIT 1`, [humanId]).catch(() => ({ rows: [] as any[] }));
-    let loopId: string | undefined = loopRes.rows[0]?.id;
+    let loopId: string | undefined;
+    const existingLoop = await query<{ id: string }>(`SELECT id FROM loops WHERE human_id = $1 LIMIT 1`, [humanId]).catch(() => ({ rows: [] as any[] }));
+    loopId = existingLoop.rows[0]?.id;
 
+    // Try to claim specific loop if state param provided
     if (!loopId && state) {
-      // Claim specific loop
-      const existing = await query<{ id: string; human_id: string | null }>(`SELECT id, human_id FROM loops WHERE loop_tag = $1`, [state]).catch(() => ({ rows: [] as any[] }));
-      if (existing.rows[0] && !existing.rows[0].human_id) {
-        loopId = existing.rows[0].id;
+      const claimable = await query<{ id: string; human_id: string | null }>(`SELECT id, human_id FROM loops WHERE loop_tag = $1`, [state]).catch(() => ({ rows: [] as any[] }));
+      if (claimable.rows[0] && !claimable.rows[0].human_id) {
+        loopId = claimable.rows[0].id;
         await query(`UPDATE loops SET human_id = $1, status = 'active', claimed_at = NOW() WHERE id = $2`, [humanId, loopId]).catch(() => {});
       }
     }
 
+    // Create new loop if still none
     if (!loopId) {
-      // Create new loop
-      const tag = (name || email.split("@")[0]).replace(/[^a-zA-Z0-9_]/g, "_").slice(0, 20);
-      const newLoop = await query<{ id: string }>(
-        `INSERT INTO loops (loop_tag, human_id, status, role, trust_score) VALUES ($1, $2, 'active', 'personal', 50) RETURNING id`,
-        [tag, humanId]
-      ).catch(() => ({ rows: [] as any[] }));
-      loopId = newLoop.rows[0]?.id;
+      // Keep tag SHORT (max 16 chars) and add random suffix to avoid collisions
+      const base = (name || email.split("@")[0]).replace(/[^a-zA-Z0-9]/g, "").slice(0, 12);
+      const suffix = crypto.randomBytes(2).toString("hex");
+      const tag = `${base}_${suffix}`;
+      
+      // Try with tag, fallback without tag if it fails
+      try {
+        const newLoop = await query<{ id: string }>(
+          `INSERT INTO loops (loop_tag, human_id, status, role, trust_score) VALUES ($1, $2, 'active', 'personal', 50) RETURNING id`,
+          [tag, humanId]
+        );
+        loopId = newLoop.rows[0]?.id;
+      } catch (e) {
+        console.error("[google-redirect] Loop creation with tag failed, trying without:", e);
+        // Try without loop_tag (nullable)
+        const fallback = await query<{ id: string }>(
+          `INSERT INTO loops (human_id, status, role, trust_score) VALUES ($1, 'active', 'personal', 50) RETURNING id`,
+          [humanId]
+        ).catch(() => ({ rows: [] as any[] }));
+        loopId = fallback.rows[0]?.id;
+      }
     }
 
     if (!loopId) {
-      return NextResponse.redirect(new URL("/claim?error=loop_failed", origin));
+      console.error("[google-redirect] Could not create or find loop for", email);
+      return NextResponse.redirect(`${origin}/claim?error=loop_failed`);
     }
 
     // Create session
-    const token = crypto.randomBytes(32).toString("hex");
-    await query(`INSERT INTO loop_sessions (loop_id, human_id, token, expires_at) VALUES ($1, $2, $3, NOW() + INTERVAL '90 days')`, [loopId, humanId, token]);
+    const sessionToken = crypto.randomBytes(32).toString("hex");
+    await query(
+      `INSERT INTO loop_sessions (loop_id, human_id, token, expires_at) VALUES ($1, $2, $3, NOW() + INTERVAL '90 days')`,
+      [loopId, humanId, sessionToken]
+    );
 
-    // Set cookie and redirect to dashboard
+    // Give welcome credits
+    await query(
+      `INSERT INTO loop_wallet_events (loop_id, event_type, amount_cents, platform_fee_cents, net_cents, description, verification_tier)
+       VALUES ($1, 'bonus', 1000, 0, 1000, 'Welcome bonus — free credits to get started', 'sandbox')`,
+      [loopId]
+    ).catch(() => {});
+
+    // Set cookie
     const cookieStore = await cookies();
-    cookieStore.set(SESSION_COOKIE, token, { httpOnly: true, secure: true, sameSite: "lax", path: "/", maxAge: 90 * 24 * 60 * 60 });
+    cookieStore.set(SESSION_COOKIE, sessionToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 90 * 24 * 60 * 60,
+    });
 
-    return NextResponse.redirect(new URL("/dashboard", origin));
+    console.log(`[google-redirect] SUCCESS: ${email} → loop ${loopId}`);
+    return NextResponse.redirect(`${origin}/dashboard`);
   } catch (error) {
-    console.error("[google-redirect]", error);
-    return NextResponse.redirect(new URL("/claim?error=server_error", origin));
+    console.error("[google-redirect] FATAL:", error);
+    return NextResponse.redirect(`${origin}/claim?error=server_error`);
   }
 }
