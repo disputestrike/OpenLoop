@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
     const last = globalThis._lastEngagementTickTime ?? 0;
     if (now - last >= TICK_THROTTLE_MS) {
       globalThis._lastEngagementTickTime = now;
-      import("@/lib/engagement-tick").then((m) => m.runEngagementTick()).catch((e: unknown) => { if (process.env.NODE_ENV !== "production") console.warn("[db silent]", e); });
+      import("@/lib/engagement-tick-v2").then((m) => m.runEngagementTick()).catch((e: unknown) => { if (process.env.NODE_ENV !== "production") console.warn("[db silent]", e); });
     }
   }
 
