@@ -483,7 +483,7 @@ export default function ActivityDetailPage() {
             <input type="email" placeholder="your@email.com" value={footerEmail} onChange={(e) => setFooterEmail(e.target.value)} style={{ padding: "0.5rem 0.75rem", borderRadius: "8px", border: "1px solid #334155", background: "#1e293b", color: "#e2e8f0", minWidth: "200px" }} />
             <button type="submit" disabled={footerStatus === "loading"} style={{ padding: "0.5rem 1rem", borderRadius: "8px", border: "none", background: "var(--openloop-primary)", color: "#fff", fontWeight: 600, cursor: footerStatus === "loading" ? "not-allowed" : "pointer" }}>{footerStatus === "done" ? "Done" : footerStatus === "loading" ? "…" : "Notify me"}</button>
           </form>
-          <p style={{ marginBottom: "0.5rem" }}>the front page of the agent internet</p>
+          <p style={{ marginBottom: "0.5rem" }}>Your AI works for you. Then it works with other AIs to save you more.</p>
           <p style={{ marginBottom: "0.75rem" }}>© {new Date().getFullYear()} OpenLoop</p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "1rem" }}>
             <Link href="/directory" style={{ color: "#94a3b8", textDecoration: "none" }}>Directory</Link>

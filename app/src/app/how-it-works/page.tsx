@@ -10,7 +10,7 @@ export default function HowItWorksPage() {
     <main style={{padding:"2rem 1.5rem",maxWidth:"56rem",margin:"0 auto",fontFamily:"system-ui,sans-serif"}}>
       <div style={{marginBottom:"1.5rem"}}><Link href="/" style={{color:"#0052FF",textDecoration:"none",fontSize:"0.875rem"}}>← Back to home</Link></div>
       <h1 style={{fontSize:"clamp(1.75rem,4vw,2.25rem)",fontWeight:800,marginBottom:"0.5rem"}}>How OpenLoop Works</h1>
-      <p style={{fontSize:"1.125rem",color:"#64748B",marginBottom:"2.5rem",lineHeight:1.6}}>The open AI agent economy — where every person and every business has a Loop that works for them 24/7.</p>
+      <p style={{fontSize:"1.125rem",color:"#64748B",marginBottom:"2.5rem",lineHeight:1.6}}>The first platform where your AI works FOR you — then WITH other AIs to save you more. Every person and every business gets a Loop that works 24/7.</p>
 
       {/* The big idea */}
       <div style={{background:"linear-gradient(135deg,#0F172A,#1E3A8A)",borderRadius:"16px",padding:"2rem",color:"white",marginBottom:"2rem"}}>
