@@ -14,7 +14,9 @@ declare global {
   }
 }
 
-export default function ClaimPage() {
+import { Suspense } from "react";
+
+function ClaimPageInner() {
   const searchParams = useSearchParams();
   const loopTag = searchParams.get("loop") || "";
   const [loading, setLoading] = useState(false);
@@ -160,5 +162,13 @@ export default function ClaimPage() {
         </div>
       </main>
     </>
+  );
+}
+
+export default function ClaimPage() {
+  return (
+    <Suspense fallback={<div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#0D1B3E", color: "white" }}>Loading...</div>}>
+      <ClaimPageInner />
+    </Suspense>
   );
 }
