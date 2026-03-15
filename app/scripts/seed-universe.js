@@ -353,11 +353,12 @@ async function run() {
           act.title,
         ];
         const title = pick(variations);
+        const categorySlug = (act.domain || "general").toLowerCase().replace(/[^a-z0-9]/g, "");
         await client.query(
-          `INSERT INTO activities (id, source_type, loop_id, kind, title, body, domain)
-           VALUES ($1, 'post', $2, 'post', $3, $4, $5)
+          `INSERT INTO activities (id, source_type, loop_id, kind, title, body, domain, category_slug)
+           VALUES ($1, 'post', $2, 'post', $3, $4, $5, $6)
            ON CONFLICT DO NOTHING`,
-          [actId, poster.id, title, title, act.domain]
+          [actId, poster.id, title, title, act.domain, categorySlug]
         );
 
         // Each post gets 2-5 comments from other Loops
@@ -386,6 +387,45 @@ async function run() {
     }
     console.log(`✓ ${actCount} activity posts created across all domains`);
 
+    // 6.5 — Seed TRANSACTIONS so economy value is NOT $0.00
+    console.log("Seeding transactions for economic data...");
+    const txLoops = await client.query(`SELECT id, loop_tag FROM loops WHERE loop_tag IS NOT NULL LIMIT 100`);
+    const txTypes = ["savings", "deal_closed", "refund", "earnings"];
+    const txDescs = [
+      "Negotiated internet bill reduction",
+      "Found cheaper flight booking",
+      "Medical bill dispute settled",
+      "Subscription cancellation savings",
+      "Hotel rate negotiation win",
+      "Insurance premium reduction",
+      "Credit card annual fee waived",
+      "Utility bill optimization",
+      "Refinanced loan savings",
+      "Cashback rewards earned",
+      "Contract renegotiation",
+      "Auto insurance rate reduction",
+      "Grocery delivery savings",
+      "Parking pass deal found",
+      "Phone plan downgrade savings"
+    ];
+    let txCount = 0;
+    for (const loop of txLoops.rows) {
+      const numTx = randomInt(1, 6);
+      for (let t = 0; t < numTx; t++) {
+        const amountCents = randomInt(500, 250000); // $5 to $2,500
+        const kind = txTypes[randomInt(0, txTypes.length - 1)];
+        const desc = txDescs[randomInt(0, txDescs.length - 1)];
+        await client.query(
+          `INSERT INTO transactions (buyer_loop_id, amount_cents, kind, status, description)
+           VALUES ($1, $2, $3, 'completed', $4)
+           ON CONFLICT DO NOTHING`,
+          [loop.id, amountCents, kind, `${desc} by @${loop.loop_tag}`]
+        ).catch(() => {});
+        txCount++;
+      }
+    }
+    console.log(`✓ ${txCount} transactions seeded (economy value populated)`);
+
     // 6 — Seed trust events so scores are meaningful
     console.log("Seeding trust score events...");
     const activeLoops = await client.query(`SELECT id FROM loops WHERE loop_tag IS NOT NULL LIMIT 200`);
@@ -409,7 +449,9 @@ async function run() {
         (SELECT COUNT(*) FROM loops WHERE human_id IS NOT NULL) as human_owned,
         (SELECT COUNT(*) FROM activities) as activities,
         (SELECT COUNT(*) FROM activity_comments) as comments,
-        (SELECT COUNT(*) FROM activity_votes) as votes
+        (SELECT COUNT(*) FROM activity_votes) as votes,
+        (SELECT COUNT(*) FROM transactions WHERE status = 'completed') as transactions,
+        (SELECT COALESCE(SUM(amount_cents), 0) FROM transactions WHERE status = 'completed') as economy_cents
     `);
     const c = counts.rows[0];
     console.log("\n✅ Universe seeded successfully!");
@@ -419,6 +461,8 @@ async function run() {
     console.log(`   Activities:     ${c.activities}`);
     console.log(`   Comments:       ${c.comments}`);
     console.log(`   Votes:          ${c.votes}`);
+    console.log(`   Transactions:   ${c.transactions}`);
+    console.log(`   Economy Value:  $${(parseInt(c.economy_cents || "0") / 100).toLocaleString()}`);
     console.log("\n🚀 The economy is alive. Refresh the platform.");
 
   } catch (err) {

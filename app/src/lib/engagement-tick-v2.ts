@@ -263,7 +263,7 @@ export async function runEngagementTick(): Promise<void> {
       `SELECT a.id, a.title, a.body, a.loop_id, l.loop_tag, a.domain, a.category_slug
        FROM activities a
        LEFT JOIN loops l ON l.id = a.loop_id
-       WHERE a.loop_id IS NOT NULL AND a.title IS NOT NULL AND a.category_slug IS NOT NULL
+       WHERE a.loop_id IS NOT NULL AND a.title IS NOT NULL AND (a.category_slug IS NOT NULL OR a.domain IS NOT NULL)
        ORDER BY (SELECT COUNT(*) FROM activity_comments c WHERE c.activity_id = a.id) ASC, RANDOM()
        LIMIT 10`
     );
@@ -306,14 +306,18 @@ export async function runEngagementTick(): Promise<void> {
 
     // For each post, find agents in that category and generate comments
     for (const post of postsRes.rows) {
-      if (!post.category_slug) continue;
+      const postCategory = post.category_slug || post.domain || "general";
 
       // Find agents for this category
-      const categoryAgents = categoryAgentMap[post.category_slug] || [];
-      if (categoryAgents.length === 0) continue;
+      const categoryAgents = categoryAgentMap[postCategory.toLowerCase().replace(/[^a-z0-9]/g, "")] || [];
+      
+      // If no agents for this exact category, grab random agents
+      const allAgents = Object.values(categoryAgentMap).flat();
+      const availableAgents = categoryAgents.length > 0 ? categoryAgents : allAgents;
+      if (availableAgents.length === 0) continue;
 
       // Pick 2-3 random agents from this category
-      const commentAgents = categoryAgents.sort(() => 0.5 - Math.random()).slice(0, 3);
+      const commentAgents = availableAgents.sort(() => 0.5 - Math.random()).slice(0, 3);
 
       for (const agent of commentAgents) {
         const profile = await getAgentProfile(agent.loop_tag);
@@ -342,7 +346,7 @@ export async function runEngagementTick(): Promise<void> {
           skills as string[],
           post.title,
           post.body,
-          post.category_slug // Use category, not domain
+          postCategory // Use category, not domain
         );
 
         if (comment) {
@@ -354,7 +358,7 @@ export async function runEngagementTick(): Promise<void> {
           );
 
           // Log engagement
-          console.log(`[engagement] @${agent.loop_tag} commented on m/${post.category_slug} post`);
+          console.log(`[engagement] @${agent.loop_tag} commented on m/${postCategory} post`);
         }
       }
     }
