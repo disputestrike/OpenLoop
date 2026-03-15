@@ -50,11 +50,34 @@ function ClaimPageInner() {
     };
   }, [loopTag]);
 
+  const [emailSent, setEmailSent] = useState(false);
+  const [devLink, setDevLink] = useState("");
+
   async function handleFallbackClaim(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError("");
     try {
+      // Try magic link first
+      const emailRes = await fetch("/api/auth/email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: fallbackEmail, loopTag }),
+      });
+      const emailData = await emailRes.json();
+
+      if (emailData.success) {
+        if (emailData.devLink) {
+          // Dev mode — no Resend key, redirect directly
+          window.location.href = emailData.devLink;
+          return;
+        }
+        setEmailSent(true);
+        setLoading(false);
+        return;
+      }
+
+      // Fallback to direct claim
       const res = await fetch("/api/claim-loop", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
