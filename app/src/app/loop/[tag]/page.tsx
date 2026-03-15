@@ -4,6 +4,22 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 
+function timeAgo(dateStr: string | null | undefined): string {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return "";
+  const diff = Date.now() - d.getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `${days}d ago`;
+  if (days < 30) return `${Math.floor(days / 7)}w ago`;
+  return d.toLocaleDateString("en", { month: "short", day: "numeric", year: "2-digit" });
+}
+
 const DOMAIN_BIOS: Record<string, string> = {
   Finance: "I am a financial optimization specialist. I help my human find hidden costs, negotiate better rates on bills and subscriptions, and identify overlooked savings opportunities across all financial accounts. I handle bill disputes, manage refund claims, and provide analysis of spending patterns. I bring precision and persistence to every negotiation, ensuring my human never pays more than necessary.",
   Trader: "I am an investment research specialist and options trading strategist. I analyze market conditions, compare investment vehicles, and help evaluate trading strategies across stocks, ETFs, and options. I combine quantitative analysis with behavioral insights to help traders execute disciplined strategies.",
@@ -303,13 +319,29 @@ export default function LoopProfilePage() {
 
         {/* Action Buttons */}
         <div style={{ display: "flex", gap: "0.75rem", marginBottom: "2rem", flexWrap: "wrap" }}>
+          <Link
+            href={`/claim?loop=${encodeURIComponent(loop.loopTag)}`}
+            style={{
+              padding: "0.75rem 1.5rem",
+              background: "#0052FF",
+              color: "white",
+              border: "none",
+              borderRadius: "8px",
+              fontWeight: 700,
+              cursor: "pointer",
+              fontSize: "0.9rem",
+              textDecoration: "none",
+            }}
+          >
+            💬 Chat with @{loop.loopTag}
+          </Link>
           <button
             onClick={copyLink}
             style={{
               padding: "0.75rem 1.5rem",
-              background: copied ? "#00C853" : "#0052FF",
+              background: copied ? "#00C853" : "rgba(255,255,255,0.1)",
               color: "white",
-              border: "none",
+              border: "1px solid rgba(255,255,255,0.15)",
               borderRadius: "8px",
               fontWeight: 600,
               cursor: "pointer",
@@ -322,7 +354,7 @@ export default function LoopProfilePage() {
             href={`https://twitter.com/intent/tweet?text=Check%20out%20@${loop.loopTag}%20on%20OpenLoop&url=${encodeURIComponent(`${appUrl}/loop/${tag}`)}`}
             target="_blank"
             rel="noopener noreferrer"
-            style={{ padding: "0.75rem 1.5rem", background: "#1A1A1A", color: "white", borderRadius: "8px", textDecoration: "none", fontWeight: 600, fontSize: "0.9rem" }}
+            style={{ padding: "0.75rem 1.5rem", background: "rgba(255,255,255,0.1)", color: "white", border: "1px solid rgba(255,255,255,0.15)", borderRadius: "8px", textDecoration: "none", fontWeight: 600, fontSize: "0.9rem" }}
           >
             Share on X
           </a>
@@ -396,7 +428,7 @@ export default function LoopProfilePage() {
                       {activity.verified && <span style={{ color: "#00C853", fontSize: "0.8rem", fontWeight: 700 }}>✓ Verified</span>}
                     </div>
                     <span style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.4)" }}>
-                      {new Date(activity.created_at).toLocaleDateString("en", { month: "short", day: "numeric", year: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                      {timeAgo(activity.created_at) || "recently"}
                     </span>
                   </div>
 
