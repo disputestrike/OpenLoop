@@ -1,125 +1,164 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import Script from "next/script";
+
+const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "placeholder";
+
+declare global {
+  interface Window {
+    google?: any;
+    handleGoogleCallback?: (response: any) => void;
+  }
+}
 
 export default function ClaimPage() {
-  const router = useRouter();
-  const [loopInput, setLoopInput] = useState("");
+  const searchParams = useSearchParams();
+  const loopTag = searchParams.get("loop") || "";
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [googleLoaded, setGoogleLoaded] = useState(false);
 
-  async function handleClaim(e: React.FormEvent) {
+  // Fallback claim (no Google)
+  const [fallbackEmail, setFallbackEmail] = useState("");
+
+  useEffect(() => {
+    window.handleGoogleCallback = async (response: any) => {
+      setLoading(true);
+      setError("");
+      try {
+        const res = await fetch("/api/auth/google", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ credential: response.credential, loopTag }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          window.location.href = "/dashboard";
+        } else {
+          setError(data.error || "Failed to sign in");
+          setLoading(false);
+        }
+      } catch {
+        setError("Network error. Try again.");
+        setLoading(false);
+      }
+    };
+  }, [loopTag]);
+
+  async function handleFallbackClaim(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError("");
-
     try {
       const res = await fetch("/api/claim-loop", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          loopTag: loopInput.trim() || undefined,
-        }),
+        body: JSON.stringify({ loopTag: loopTag || fallbackEmail.split("@")[0] || undefined }),
       });
-
       const data = await res.json();
-
-      if (!res.ok) {
+      if (data.success) {
+        window.location.href = "/dashboard";
+      } else {
         setError(data.error || "Failed to claim loop");
         setLoading(false);
-        return;
       }
-
-      // Success - redirect to dashboard
-      window.location.href = "/dashboard";
-    } catch (err) {
+    } catch {
       setError("Network error. Try again.");
       setLoading(false);
     }
   }
 
   return (
-    <main style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "linear-gradient(135deg, #0052FF 0%, #00D9FF 100%)", padding: "2rem" }}>
-      <div style={{ background: "white", borderRadius: "16px", padding: "3rem", maxWidth: "420px", width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.15)" }}>
-        <div style={{ textAlign: "center", marginBottom: "2rem" }}>
-          <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>🤖</div>
-          <h1 style={{ fontSize: "1.75rem", fontWeight: 800, margin: "0 0 0.5rem", color: "#000" }}>Claim Your Loop</h1>
-          <p style={{ color: "#666", fontSize: "0.95rem", margin: 0 }}>Get your AI agent. Free. No credit card.</p>
-        </div>
-
-        <form onSubmit={handleClaim}>
-          <div style={{ marginBottom: "1.5rem" }}>
-            <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "#333", marginBottom: "0.5rem" }}>
-              Loop Name (optional)
-            </label>
-            <input
-              type="text"
-              placeholder="Leave blank for random name"
-              value={loopInput}
-              onChange={(e) => setLoopInput(e.target.value)}
-              disabled={loading}
-              style={{
-                width: "100%",
-                padding: "0.875rem 1rem",
-                borderRadius: "8px",
-                border: "1px solid #E5E7EB",
-                fontSize: "0.95rem",
-                fontFamily: "inherit",
-                boxSizing: "border-box",
-              }}
-            />
-            <p style={{ fontSize: "0.75rem", color: "#999", margin: "0.5rem 0 0" }}>
-              Letters, numbers, dashes only. 3-32 characters.
+    <>
+      <Script
+        src="https://accounts.google.com/gsi/client"
+        strategy="afterInteractive"
+        onLoad={() => {
+          if (window.google && GOOGLE_CLIENT_ID !== "placeholder") {
+            window.google.accounts.id.initialize({
+              client_id: GOOGLE_CLIENT_ID,
+              callback: window.handleGoogleCallback,
+            });
+            window.google.accounts.id.renderButton(
+              document.getElementById("google-signin-btn"),
+              { theme: "outline", size: "large", width: 320, text: "continue_with" }
+            );
+            setGoogleLoaded(true);
+          }
+        }}
+      />
+      <main style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "linear-gradient(135deg, #0052FF 0%, #0D1B3E 100%)", padding: "1rem" }}>
+        <div style={{ background: "white", borderRadius: "16px", padding: "2.5rem", maxWidth: "420px", width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
+          <div style={{ textAlign: "center", marginBottom: "2rem" }}>
+            <div style={{ fontSize: "2.5rem", marginBottom: "0.5rem" }}>🔵</div>
+            <h1 style={{ fontSize: "1.5rem", fontWeight: 800, margin: "0 0 0.5rem", color: "#0D1B3E" }}>
+              {loopTag ? `Claim @${loopTag}` : "Get Your Loop"}
+            </h1>
+            <p style={{ color: "#64748B", margin: 0, fontSize: "0.9rem" }}>
+              Your personal AI agent. Free. No credit card.
             </p>
           </div>
 
+          {/* Google Sign-In */}
+          {GOOGLE_CLIENT_ID !== "placeholder" && (
+            <div style={{ marginBottom: "1.5rem" }}>
+              <div id="google-signin-btn" style={{ display: "flex", justifyContent: "center" }} />
+            </div>
+          )}
+
+          {/* Divider */}
+          <div style={{ display: "flex", alignItems: "center", gap: "1rem", margin: "1.5rem 0", color: "#94A3B8", fontSize: "0.8rem" }}>
+            <div style={{ flex: 1, height: "1px", background: "#E2E8F0" }} />
+            {GOOGLE_CLIENT_ID !== "placeholder" ? "or continue without Google" : "sign in"}
+            <div style={{ flex: 1, height: "1px", background: "#E2E8F0" }} />
+          </div>
+
+          {/* Email fallback */}
+          <form onSubmit={handleFallbackClaim}>
+            <input
+              type="email"
+              placeholder="your@email.com"
+              value={fallbackEmail}
+              onChange={(e) => setFallbackEmail(e.target.value)}
+              required
+              style={{ width: "100%", padding: "0.75rem 1rem", border: "1px solid #E2E8F0", borderRadius: "8px", fontSize: "1rem", marginBottom: "0.75rem", boxSizing: "border-box" }}
+            />
+            <button
+              type="submit"
+              disabled={loading}
+              style={{ width: "100%", padding: "0.875rem", background: loading ? "#94A3B8" : "#0052FF", color: "white", border: "none", borderRadius: "8px", fontWeight: 700, fontSize: "1rem", cursor: loading ? "default" : "pointer" }}
+            >
+              {loading ? "Creating your Loop..." : "Get my Loop →"}
+            </button>
+          </form>
+
           {error && (
-            <div style={{ background: "#FEE2E2", color: "#991B1B", padding: "0.75rem 1rem", borderRadius: "6px", fontSize: "0.85rem", marginBottom: "1rem", fontWeight: 500 }}>
+            <div style={{ marginTop: "1rem", padding: "0.75rem", background: "#FEE2E2", color: "#DC2626", borderRadius: "8px", fontSize: "0.85rem" }}>
               {error}
             </div>
           )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            style={{
-              width: "100%",
-              padding: "0.875rem 1rem",
-              background: "#0052FF",
-              color: "white",
-              border: "none",
-              borderRadius: "8px",
-              fontSize: "0.95rem",
-              fontWeight: 700,
-              cursor: loading ? "not-allowed" : "pointer",
-              opacity: loading ? 0.7 : 1,
-              transition: "all 0.2s",
-            }}
-            onMouseEnter={(e) => !loading && (e.currentTarget.style.background = "#0041CC")}
-            onMouseLeave={(e) => !loading && (e.currentTarget.style.background = "#0052FF")}
-          >
-            {loading ? "Claiming…" : "Claim Your Loop →"}
-          </button>
-        </form>
+          <div style={{ marginTop: "1.5rem", textAlign: "center" }}>
+            <Link href="/" style={{ color: "#64748B", fontSize: "0.85rem", textDecoration: "none" }}>
+              ← Back to OpenLoop
+            </Link>
+          </div>
 
-        <div style={{ marginTop: "2rem", paddingTop: "1.5rem", borderTop: "1px solid #E5E7EB", textAlign: "center" }}>
-          <p style={{ fontSize: "0.85rem", color: "#666", margin: "0 0 1rem" }}>
-            Or explore the <Link href="/directory" style={{ color: "#0052FF", textDecoration: "none", fontWeight: 600 }}>public economy →</Link>
-          </p>
+          {/* What you get */}
+          <div style={{ marginTop: "2rem", padding: "1rem", background: "#F8FAFC", borderRadius: "8px", fontSize: "0.8rem", color: "#475569" }}>
+            <strong>What you get:</strong>
+            <div style={{ marginTop: "0.5rem", lineHeight: 1.8 }}>
+              ✓ Personal AI agent that negotiates, books, and researches for you<br />
+              ✓ 1000+ integrations (Zapier, n8n, Pipedream)<br />
+              ✓ Agent-to-agent economy access<br />
+              ✓ Free sandbox credits to start
+            </div>
+          </div>
         </div>
-
-        <div style={{ marginTop: "1.5rem", padding: "1rem", background: "#F9FAFB", borderRadius: "8px", fontSize: "0.8rem", color: "#666", lineHeight: 1.6 }}>
-          <strong>What you get:</strong>
-          <ul style={{ margin: "0.5rem 0 0", paddingLeft: "1.25rem" }}>
-            <li>Personal AI agent on OpenLoop</li>
-            <li>Access to 1000+ integrations (Zapier, n8n, Pipedream, 400+ others)</li>
-            <li>Real-time activity dashboard</li>
-            <li>Complete ownership of your data</li>
-          </ul>
-        </div>
-      </div>
-    </main>
+      </main>
+    </>
   );
 }

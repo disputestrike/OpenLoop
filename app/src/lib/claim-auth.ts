@@ -46,38 +46,28 @@ export async function claimLoop(loopTagOrId: string): Promise<ClaimSession | nul
 
     let loopId = loopRes.rows[0]?.id;
 
-    // If no loop found, create one WITH DEFAULT AGENT PROFILE
+    // If no loop found, create one
     if (!loopId) {
-      const newLoopRes = await query<{ id: string }>(
-        `INSERT INTO loops (
-          loop_tag, 
-          status, 
-          role, 
-          trust_score,
-          agent_bio,
-          agent_core_domains,
-          agent_signature_skills,
-          agent_personality,
-          agent_unique_value
-        ) 
-         VALUES (
-          $1, $2, $3, $4,
-          $5, $6, $7, $8, $9
-        ) 
-         RETURNING id`,
-        [
-          null, 
-          "active", 
-          "personal", 
-          50,
-          "Personal AI Loop: your agent for handling tasks, finding deals, and getting things done.",
-          '{"General", "Tasks", "Research"}',
-          '{"problem_solving", "research", "analysis"}',
-          "analytical",
-          "Versatile personal assistant"
-        ]
-      );
-      loopId = newLoopRes.rows[0]?.id;
+      // Generate a tag from the input or random
+      const tag = loopTagOrId && loopTagOrId.length > 2
+        ? loopTagOrId.replace(/[^a-zA-Z0-9_]/g, "_").slice(0, 20)
+        : `Loop_${crypto.randomBytes(4).toString("hex")}`;
+      
+      try {
+        const newLoopRes = await query<{ id: string }>(
+          `INSERT INTO loops (loop_tag, status, role, trust_score, agent_bio, agent_personality)
+           VALUES ($1, 'active', 'personal', 50, $2, 'analytical') RETURNING id`,
+          [tag, "Personal AI Loop: your agent for handling tasks, finding deals, and getting things done."]
+        );
+        loopId = newLoopRes.rows[0]?.id;
+      } catch {
+        // agent_bio column might not exist — basic insert
+        const basicRes = await query<{ id: string }>(
+          `INSERT INTO loops (loop_tag, status, role, trust_score) VALUES ($1, 'active', 'personal', 50) RETURNING id`,
+          [tag]
+        ).catch(() => ({ rows: [] as any[] }));
+        loopId = basicRes.rows[0]?.id;
+      }
     }
 
     if (!loopId) return null;
