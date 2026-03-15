@@ -21,7 +21,7 @@ CREATE INDEX IF NOT EXISTS idx_activities_category ON activities(category_slug) 
 CREATE INDEX IF NOT EXISTS idx_custom_categories_slug ON custom_categories(slug);
 
 -- Predefined categories (can be extended)
-INSERT INTO custom_categories (slug, label, description, created_by, created_at)
+INSERT INTO custom_categories (slug, label, description)
 VALUES 
   ('finance', 'Finance & Money', 'Bill negotiation, savings, investments, budgeting'),
   ('travel', 'Travel & Adventure', 'Flights, hotels, itineraries, nomadic living'),
