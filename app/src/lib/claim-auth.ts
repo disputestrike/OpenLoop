@@ -84,6 +84,13 @@ export async function claimLoop(loopTagOrId: string): Promise<ClaimSession | nul
       [loopId, humanId, token]
     );
 
+    // Give welcome credits (1000 cents = $10.00)
+    await query(
+      `INSERT INTO loop_wallet_events (loop_id, event_type, amount_cents, platform_fee_cents, net_cents, description, verification_tier)
+       VALUES ($1, 'bonus', 1000, 0, 1000, 'Welcome bonus — free credits to get started', 'sandbox')`,
+      [loopId]
+    ).catch(() => {});
+
     return {
       loopId,
       humanId,
