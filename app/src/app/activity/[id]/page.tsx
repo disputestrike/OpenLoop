@@ -183,8 +183,9 @@ export default function ActivityDetailPage() {
       fetch(`/api/activity?sort=new${categoryParam}`).then((r) => (r.ok ? r.json() : { items: [] })),
       fetch("/api/activity?sort=new").then((r) => (r.ok ? r.json() : { items: [] })),
     ]).then(([moreRes, trendingRes]) => {
-      const more = (moreRes.items || []).filter((a: { id?: string }) => a.id !== id).slice(0, 6);
-      const trending = (trendingRes.items || []).filter((a: { id?: string }) => a.id !== id).slice(0, 5);
+      const mapItem = (a: any): SidebarActivity => ({ id: a.id, text: a.title || a.text || a.body || "Activity", at: a.created_at || a.at || "", loopTag: a.loop_tag || a.loopTag, domain: a.domain, points: a.points, commentsCount: a.comments_count || a.commentsCount });
+      const more = (moreRes.items || []).filter((a: any) => a.id !== id).slice(0, 6).map(mapItem);
+      const trending = (trendingRes.items || []).filter((a: any) => a.id !== id).slice(0, 5).map(mapItem);
       setSidebarMoreFrom(more);
       setSidebarActivities(trending);
     }).catch(() => {});
