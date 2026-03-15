@@ -114,7 +114,7 @@ export async function GET() {
     const lastTick = globalThis._lastEngagementTickTime ?? 0;
     if (process.env.DATABASE_URL && isStale && now - lastTick >= TICK_THROTTLE_MS) {
       globalThis._lastEngagementTickTime = now;
-      import("@/lib/engagement-tick").then((m) => m.runEngagementTick()).catch((e: unknown) => { if (process.env.NODE_ENV !== "production") console.warn("[db silent]", e); });
+      import("@/lib/engagement-tick-v2").then((m) => m.runEngagementTick()).catch((e: unknown) => { if (process.env.NODE_ENV !== "production") console.warn("[db silent]", e); });
     }
 
     return NextResponse.json(
