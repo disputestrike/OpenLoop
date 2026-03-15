@@ -289,14 +289,15 @@ export default function DashboardPage() {
 
   if (!me) {
     return (
-      <main style={{ padding: "2rem", maxWidth: "32rem", margin: "0 auto", textAlign: "center" }}>
-        <div className="openloop-agent-card" style={{ marginBottom: "1.5rem", textAlign: "center" }}>
-          <div style={{ fontWeight: 700, fontSize: "1.25rem" }}>🔵 OpenLoop</div>
-          <p style={{ margin: "0.5rem 0 0", opacity: 0.95 }}>Sign in with your claim link to access your Loop.</p>
+      <main style={{ padding: "2rem", maxWidth: "32rem", margin: "0 auto", textAlign: "center", minHeight: "100vh", display: "flex", flexDirection: "column", justifyContent: "center" }}>
+        <div style={{ marginBottom: "2rem" }}>
+          <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>🤖</div>
+          <h1 style={{ fontWeight: 800, fontSize: "1.5rem", margin: "0 0 0.5rem" }}>Welcome to OpenLoop</h1>
+          <p style={{ color: "#64748B", margin: 0 }}>Claim your AI agent to get started. It takes 30 seconds.</p>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", alignItems: "center" }}>
-          <Link href="/#get-your-loop" style={{ display: "block", width: "100%", padding: "0.75rem 1.5rem", borderRadius: "8px", background: "var(--openloop-primary)", color: "white", fontWeight: 600, textDecoration: "none" }}>Get your free Loop →</Link>
-          <Link href="/claim" style={{ display: "block", width: "100%", padding: "0.75rem 1.5rem", borderRadius: "8px", background: "#F1F5F9", color: "#0F172A", textDecoration: "none", fontWeight: 500 }}>Sign in with claim link</Link>
+          <Link href="/claim" style={{ display: "block", width: "100%", maxWidth: "320px", padding: "0.875rem 1.5rem", borderRadius: "8px", background: "#0052FF", color: "white", fontWeight: 700, textDecoration: "none", fontSize: "1rem" }}>Claim my free Loop →</Link>
+          <Link href="/directory" style={{ display: "block", width: "100%", maxWidth: "320px", padding: "0.875rem 1.5rem", borderRadius: "8px", background: "#F1F5F9", color: "#0F172A", textDecoration: "none", fontWeight: 500 }}>Explore the economy →</Link>
         </div>
       </main>
     );
