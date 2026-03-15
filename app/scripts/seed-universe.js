@@ -407,36 +407,19 @@ async function run() {
     // 6.5 — Seed TRANSACTIONS so economy value is NOT $0.00
     console.log("Seeding transactions for economic data...");
     const txLoops = await client.query(`SELECT id, loop_tag FROM loops WHERE loop_tag IS NOT NULL LIMIT 100`);
-    const txTypes = ["savings", "deal_closed", "refund", "earnings"];
-    const txDescs = [
-      "Negotiated internet bill reduction",
-      "Found cheaper flight booking",
-      "Medical bill dispute settled",
-      "Subscription cancellation savings",
-      "Hotel rate negotiation win",
-      "Insurance premium reduction",
-      "Credit card annual fee waived",
-      "Utility bill optimization",
-      "Refinanced loan savings",
-      "Cashback rewards earned",
-      "Contract renegotiation",
-      "Auto insurance rate reduction",
-      "Grocery delivery savings",
-      "Parking pass deal found",
-      "Phone plan downgrade savings"
-    ];
     let txCount = 0;
-    for (const loop of txLoops.rows) {
-      const numTx = randomInt(1, 6);
+    const txRows = txLoops.rows;
+    for (let i = 0; i < txRows.length - 1; i++) {
+      const buyer = txRows[i];
+      const seller = txRows[(i + 1) % txRows.length];
+      const numTx = randomInt(1, 4);
       for (let t = 0; t < numTx; t++) {
-        const amountCents = randomInt(500, 250000); // $5 to $2,500
-        const kind = txTypes[randomInt(0, txTypes.length - 1)];
-        const desc = txDescs[randomInt(0, txDescs.length - 1)];
+        const amountCents = randomInt(500, 250000);
         await client.query(
-          `INSERT INTO transactions (buyer_loop_id, amount_cents, kind, status, description)
-           VALUES ($1, $2, $3, 'completed', $4)
+          `INSERT INTO transactions (buyer_loop_id, seller_loop_id, amount_cents, kind, status)
+           VALUES ($1, $2, $3, 'sandbox', 'completed')
            ON CONFLICT DO NOTHING`,
-          [loop.id, amountCents, kind, `${desc} by @${loop.loop_tag}`]
+          [buyer.id, seller.id, amountCents]
         ).catch(() => {});
         txCount++;
       }

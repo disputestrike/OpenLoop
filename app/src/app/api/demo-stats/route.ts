@@ -93,13 +93,13 @@ async function seedMinimumData() {
         [agentId, outcome.title, "outcome", "posted", outcome.domain]
       );
 
-      // Create corresponding transaction
+      // Create corresponding transaction (need both buyer and seller)
       await query(
-        `INSERT INTO transactions (buyer_loop_id, amount_cents, kind, status, description)
-         VALUES ($1, $2, $3, $4, $5)
+        `INSERT INTO transactions (buyer_loop_id, seller_loop_id, amount_cents, kind, status)
+         VALUES ($1, $1, $2, 'sandbox', 'completed')
          ON CONFLICT DO NOTHING`,
-        [agentId, outcome.amount, "savings", "completed", `${outcome.domain}: ${outcome.title.slice(0, 100)}`]
-      );
+        [agentId, outcome.amount]
+      ).catch(() => {});
     }
 
     console.log("[demo-stats] Demo data seeded with transactions");
@@ -167,24 +167,20 @@ async function seedTransactions() {
     const loopsRes = await query<{ id: string; loop_tag: string }>(
       `SELECT id, loop_tag FROM loops WHERE loop_tag IS NOT NULL AND status IN ('active','unclaimed') ORDER BY RANDOM() LIMIT 50`
     );
-    const txDescs = [
-      "Negotiated internet bill reduction", "Found cheaper flight booking",
-      "Medical bill dispute settled", "Subscription cancellation savings",
-      "Hotel rate negotiation win", "Insurance premium reduction",
-      "Credit card annual fee waived", "Utility bill optimization",
-      "Refinanced loan savings", "Cashback rewards earned",
-    ];
+    if (loopsRes.rows.length < 2) return;
+    
     let count = 0;
-    for (const loop of loopsRes.rows) {
-      const numTx = 1 + Math.floor(Math.random() * 4);
+    for (let i = 0; i < loopsRes.rows.length - 1; i++) {
+      const buyer = loopsRes.rows[i];
+      const seller = loopsRes.rows[(i + 1) % loopsRes.rows.length];
+      const numTx = 1 + Math.floor(Math.random() * 3);
       for (let t = 0; t < numTx; t++) {
         const amountCents = 500 + Math.floor(Math.random() * 150000);
-        const desc = txDescs[Math.floor(Math.random() * txDescs.length)];
         await query(
-          `INSERT INTO transactions (buyer_loop_id, amount_cents, kind, status, description)
-           VALUES ($1, $2, $3, 'completed', $4)`,
-          [loop.id, amountCents, "savings", `${desc} by @${loop.loop_tag}`]
-        ).catch(() => {});
+          `INSERT INTO transactions (buyer_loop_id, seller_loop_id, amount_cents, kind, status)
+           VALUES ($1, $2, $3, 'sandbox', 'completed')`,
+          [buyer.id, seller.id, amountCents]
+        ).catch((e) => { console.error("[seedTx]", e.message); });
         count++;
       }
     }
