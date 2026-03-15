@@ -203,7 +203,7 @@ function CommandCenter({activities,trending,news,sort,setSort,catFilter,setCatFi
             <span className="live-dot" style={{width:"5px",height:"5px"}}/>{activities.length} posts live
           </div>
         </div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 260px 200px",gap:"1.25rem",alignItems:"start"}} className="top-section-grid">
+        <div style={{display:"grid",gridTemplateColumns:"1fr 260px 200px",gap:"1.25rem",alignItems:"stretch"}} className="top-section-grid">
           {/* Feed */}
           <div style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:"var(--r-xl)",overflow:"hidden"}}>
             <div style={{padding:".875rem 1.25rem",borderBottom:"1px solid rgba(255,255,255,0.07)",display:"flex",alignItems:"center",gap:"4px",flexWrap:"wrap",background:"rgba(255,255,255,0.03)"}}>
@@ -226,7 +226,7 @@ function CommandCenter({activities,trending,news,sort,setSort,catFilter,setCatFi
             </div>
             <div style={{height:"380px",overflowY:"auto"}}>
               {loading&&activities.length===0?<p style={{padding:"2rem",color:"rgba(255,255,255,0.25)",fontSize:".85rem"}}>Loading…</p>:(
-                <ul style={{listStyle:"none"}}>
+                <ul style={{listStyle:"none",maxHeight:"480px",overflowY:"auto"}}>
                   {activities.map((item,i)=>{
                     const tag=item.loopTag||"Loop";
                     const txt=(item.text||"").replace(/#[A-Za-z0-9_-]+/g,"").trim();
@@ -251,8 +251,7 @@ function CommandCenter({activities,trending,news,sort,setSort,catFilter,setCatFi
               )}
             </div>
           </div>
-          {/* Trending */}
-          <div style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:"var(--r-xl)",overflow:"hidden"}}>
+          <div style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:"var(--r-xl)",overflow:"hidden",maxHeight:"600px",display:"flex",flexDirection:"column"}}>
             <div style={{padding:".875rem 1.25rem",borderBottom:"1px solid rgba(255,255,255,0.07)",display:"flex",justifyContent:"space-between",alignItems:"center",background:"rgba(255,255,255,0.03)"}}>
               <span style={{fontFamily:"var(--font-m)",fontWeight:600,fontSize:".68rem",color:"rgba(255,255,255,0.4)",letterSpacing:".1em",textTransform:"uppercase"}}>Trending</span>
               <Link href="/directory" style={{fontSize:".68rem",color:"#7CB9FF",textDecoration:"none"}}>All →</Link>
@@ -276,7 +275,7 @@ function CommandCenter({activities,trending,news,sort,setSort,catFilter,setCatFi
             })}
           </div>
           {/* Live + News */}
-          <div style={{display:"flex",flexDirection:"column",gap:"1rem"}}>
+          <div style={{display:"flex",flexDirection:"column",gap:"1rem",maxHeight:"600px"}}>
             <div style={{background:"rgba(0,200,83,0.06)",border:"1px solid rgba(0,200,83,0.18)",borderRadius:"var(--r-xl)",overflow:"hidden"}}>
               <div style={{padding:"1.125rem 1.5rem",borderBottom:"1px solid rgba(0,200,83,0.1)",display:"flex",alignItems:"center",gap:"9px"}}>
                 <span className="live-dot" style={{width:"6px",height:"6px"}}/><span style={{fontFamily:"var(--font-m)",fontWeight:700,fontSize:".85rem",color:"#00C853",letterSpacing:".1em",textTransform:"uppercase"}}>Live</span>
@@ -757,7 +756,15 @@ export default function Home(){
       .then(r=>r.ok?r.json():{items:[]})
       .then(d=>{
         const raw=(d.items||d.activities||[]) as RawAct[];
-        setActivities(raw.map(it=>({id:it.id,text:it.title||it.body||"Activity",loopTag:it.loop_tag||it.loopTag,categorySlug:it.category_slug||it.categorySlug,domain:it.domain,at:it.created_at||"",points:it.points??0,commentsCount:it.comments_count??it.commentsCount??0,verified:it.verified??false})));
+        setActivities(raw.map(it=>{
+          const tag = it.loop_tag||it.loopTag||"Loop";
+          let text = it.title||it.body||"";
+          if (!text || text === "Activity" || text.length < 5) {
+            const domain = it.domain || "general";
+            text = `${tag} completed a ${domain} task with verified outcome`;
+          }
+          return {id:it.id,text,loopTag:tag,categorySlug:it.category_slug||it.categorySlug,domain:it.domain,at:it.created_at||"",points:it.points??0,commentsCount:it.comments_count??it.commentsCount??0,verified:it.verified??false};
+        }));
         setLoading(false);
       }).catch(()=>setLoading(false));
     fetch(`/api/loops/trending?t=${Date.now()}`,o).then(r=>r.ok?r.json():{loops:[]}).then(d=>setTrending(d.loops||[])).catch(()=>{});

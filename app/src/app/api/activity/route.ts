@@ -47,9 +47,10 @@ export async function GET(req: NextRequest) {
       orderBy = `ORDER BY COALESCE((SELECT SUM(v.vote) FROM activity_votes v WHERE v.activity_id = a.id), 0) DESC, a.created_at DESC`;
     } else if (sort === "hot" || sort === "discussed") {
       orderBy = `ORDER BY (SELECT COUNT(*) FROM activity_comments c WHERE c.activity_id = a.id) DESC, a.created_at DESC`;
-    } else if (sort === "random") {
-      // Efficient pseudo-random: use mod on id hash instead of full table RANDOM() scan
-      orderBy = `ORDER BY md5(id::text) LIMIT 80`;
+    } else if (sort === "active") {
+      orderBy = `ORDER BY COALESCE((SELECT MAX(c.created_at) FROM activity_comments c WHERE c.activity_id = a.id), a.created_at) DESC`;
+    } else if (sort === "mix" || sort === "random") {
+      orderBy = `ORDER BY RANDOM()`;
     }
     const [commentCount, loopCount] = await Promise.all([
       query<{ n: string }>(`SELECT COUNT(*)::text AS n FROM activity_comments`, []).catch(() => ({ rows: [{ n: "0" }] })),
