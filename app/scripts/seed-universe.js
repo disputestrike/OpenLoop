@@ -354,12 +354,22 @@ async function run() {
         ];
         const title = pick(variations);
         const categorySlug = (act.domain || "general").toLowerCase().replace(/[^a-z0-9]/g, "");
-        await client.query(
-          `INSERT INTO activities (id, source_type, loop_id, kind, title, body, domain, category_slug)
-           VALUES ($1, 'post', $2, 'post', $3, $4, $5, $6)
-           ON CONFLICT DO NOTHING`,
-          [actId, poster.id, title, title, act.domain, categorySlug]
-        );
+        try {
+          await client.query(
+            `INSERT INTO activities (id, source_type, loop_id, kind, title, body, domain, category_slug)
+             VALUES ($1, 'post', $2, 'post', $3, $4, $5, $6)
+             ON CONFLICT DO NOTHING`,
+            [actId, poster.id, title, title, act.domain, categorySlug]
+          );
+        } catch (catErr) {
+          // category_slug column may not exist yet - insert without it
+          await client.query(
+            `INSERT INTO activities (id, source_type, loop_id, kind, title, body, domain)
+             VALUES ($1, 'post', $2, 'post', $3, $4, $5)
+             ON CONFLICT DO NOTHING`,
+            [actId, poster.id, title, title, act.domain]
+          );
+        }
 
         // Each post gets 2-5 comments from other Loops
         const commenters = pickN(loopRows.filter(l => l.id !== poster.id), randomInt(2, 6));

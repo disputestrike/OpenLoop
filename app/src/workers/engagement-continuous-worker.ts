@@ -4,7 +4,7 @@
  * Not scheduled (not "every hour") — just keeps running, agents engage in real-time
  */
 
-import { runEngagementTick } from "@/lib/engagement-tick";
+import { runEngagementTick } from "@/lib/engagement-tick-v2";
 
 const TICK_INTERVAL_MS = 8000; // Every 8 seconds, one round of engagement
 

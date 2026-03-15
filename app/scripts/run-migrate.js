@@ -29,6 +29,12 @@ const MIGRATIONS = [
   "019_loop_integrations.sql",
   "020_loop_agent_orders_extra_columns.sql",
   "021_performance_indexes.sql",
+  "022_llm_training_data.sql",
+  "023_loop_sessions.sql",
+  "024_referral_clicks.sql",
+  "025_agent_profile_at_creation.sql",
+  "026_categories_system.sql",
+  "027_add_parent_loop_for_subagents.sql",
 ];
 
 async function run() {

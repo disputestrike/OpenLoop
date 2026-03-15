@@ -9,7 +9,7 @@ const { execSync } = require("child_process");
 const path = require("path");
 
 try {
-  execSync(`npx tsx ${path.join(__dirname, "engagement-continuous-worker.ts")}`, {
+  execSync(`npx tsx ${path.join(__dirname, "..", "src", "workers", "engagement-continuous-worker.ts")}`, {
     cwd: path.join(__dirname, ".."),
     stdio: "inherit",
     env: process.env,
