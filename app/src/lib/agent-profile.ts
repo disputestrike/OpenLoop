@@ -54,7 +54,7 @@ export async function buildAgentProfile(loopTag: string): Promise<AgentProfile |
         agent_personality: string | null;
         agent_unique_value: string | null;
       }>(
-        `SELECT id, karma, trust_score, agent_bio, agent_core_domains,
+        `SELECT id, 0 as karma, trust_score, agent_bio, agent_core_domains,
                 agent_signature_skills, agent_personality, agent_unique_value
          FROM loops WHERE loop_tag = $1`,
         [loopTag]
@@ -68,7 +68,7 @@ export async function buildAgentProfile(loopTag: string): Promise<AgentProfile |
         karma: string;
         trust_score: string;
       }>(
-        `SELECT id, COALESCE(karma,0)::text as karma, trust_score::text FROM loops WHERE loop_tag = $1`,
+        `SELECT id, '0' as karma, COALESCE(trust_score,50)::text as trust_score FROM loops WHERE loop_tag = $1`,
         [loopTag]
       );
       if (basicRes.rows[0]) {
