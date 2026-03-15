@@ -94,11 +94,11 @@ SELECT
     ELSE 'Poor (<0.6)'
   END as quality_bracket,
   COUNT(*) as count,
-  COUNT(*) * 100.0 / SUM(COUNT(*)) OVER () as percentage
+  COUNT(*) * 100.0 / NULLIF(SUM(COUNT(*)) OVER (), 0) as percentage
 FROM llm_training_interactions
 WHERE created_at > NOW() - INTERVAL '7 days'
-GROUP BY quality_bracket
-ORDER BY quality_score DESC;
+GROUP BY 1
+ORDER BY 1 DESC;
 
 -- Create agent contribution view
 CREATE OR REPLACE VIEW llm_training_agent_stats AS
