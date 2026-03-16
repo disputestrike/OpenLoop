@@ -57,6 +57,14 @@ export async function POST(req: NextRequest) {
     ]
   ).catch((e: unknown) => { if (process.env.NODE_ENV !== "production") console.warn("[db silent]", e); });
 
+  try {
+    const { fireNegotiationStarted } = await import("@/lib/n8n-integration");
+    fireNegotiationStarted(session.loopId, loop.loop_tag ?? "Loop", {
+      subject,
+      targetLoopTag: businessTag.trim(),
+    });
+  } catch (_) {}
+
   // Run the negotiation
   const result = await runLoopToLoopNegotiation({
     buyerLoopId: session.loopId,

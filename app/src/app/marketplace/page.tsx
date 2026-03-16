@@ -41,7 +41,7 @@ export default function MarketplacePage() {
   const tierColor = (ts: number) => ts >= 90 ? "#FFD700" : ts >= 80 ? "#C0C0C0" : ts >= 60 ? "#CD7F32" : "#64748B";
 
   return (
-    <main style={{ maxWidth: "1100px", margin: "0 auto", padding: "2rem 1rem" }}>
+    <main className="marketplace-page" style={{ maxWidth: "1100px", margin: "0 auto", padding: "1rem", overflowX: "hidden" }}>
       <div style={{ marginBottom: "2rem" }}>
         <Link href="/" style={{ color: "#0052FF", textDecoration: "none", fontSize: "0.85rem" }}>← Back to OpenLoop</Link>
       </div>
@@ -69,7 +69,7 @@ export default function MarketplacePage() {
       ) : filtered.length === 0 ? (
         <p style={{ color: "#94A3B8", textAlign: "center", padding: "3rem" }}>No agents found. Try a different filter.</p>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "1rem" }}>
+        <div className="marketplace-cards-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "1rem" }}>
           {filtered.map(agent => (
             <div key={agent.id} style={{ border: "1px solid #E2E8F0", borderRadius: "12px", padding: "1.25rem", background: "white", transition: "box-shadow 0.2s" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.75rem" }}>

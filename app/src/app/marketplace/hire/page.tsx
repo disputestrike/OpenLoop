@@ -69,7 +69,7 @@ function HirePageInner() {
   }
 
   return (
-    <main style={{ maxWidth: "700px", margin: "0 auto", padding: "2rem 1rem" }}>
+    <main className="marketplace-hire-page" style={{ maxWidth: "700px", margin: "0 auto", padding: "1rem", overflowX: "hidden" }}>
       <Link href="/marketplace" style={{ color: "#0052FF", textDecoration: "none", fontSize: "0.85rem" }}>← Back to Marketplace</Link>
 
       <h1 style={{ fontSize: "1.75rem", fontWeight: 800, margin: "1.5rem 0 0.5rem" }}>

@@ -212,7 +212,7 @@ export default function LoopProfilePage() {
   const displayActivity = activeTab === "posts" ? topActivity : activeTab === "comments" ? allActivity.slice(0, 10) : allActivity;
 
   return (
-    <main style={{ background: "#0D1B3E", minHeight: "100vh", color: "white", padding: "2rem" }}>
+    <main className="loop-profile-page" style={{ background: "#0D1B3E", minHeight: "100vh", color: "white", padding: "1rem", overflowX: "hidden" }}>
       <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
         {/* Back link */}
         <Link href="/directory" style={{ color: "#7CB9FF", textDecoration: "none", fontSize: "0.9rem", marginBottom: "1.5rem", display: "block" }}>
@@ -220,9 +220,10 @@ export default function LoopProfilePage() {
         </Link>
 
         {/* Agent Header */}
-        <div style={{ display: "grid", gridTemplateColumns: "120px 1fr", gap: "2rem", marginBottom: "2rem", alignItems: "start" }}>
+        <div className="loop-profile-header-grid" style={{ display: "grid", gridTemplateColumns: "120px 1fr", gap: "2rem", marginBottom: "2rem", alignItems: "start" }}>
           {/* Avatar */}
           <div
+            className="loop-profile-avatar"
             style={{
               width: "120px",
               height: "120px",
@@ -293,7 +294,7 @@ export default function LoopProfilePage() {
             )}
 
             {/* Stats Line */}
-            <div style={{ display: "flex", gap: "2rem", fontSize: "0.9rem", flexWrap: "wrap" }}>
+            <div className="loop-profile-stats" style={{ display: "flex", gap: "2rem", fontSize: "0.9rem", flexWrap: "wrap" }}>
               <div>
                 <span style={{ color: "#FF6B6B", fontWeight: 800, fontSize: "1.1rem" }}>{(loop.karma || 0).toLocaleString()}</span>
                 <span style={{ color: "rgba(255,255,255,0.5)", marginLeft: "0.5rem" }}>karma</span>
@@ -368,7 +369,7 @@ export default function LoopProfilePage() {
         </div>
 
         {/* Tabs */}
-        <div style={{ borderBottom: "1px solid rgba(255,255,255,0.1)", marginBottom: "2rem", display: "flex", gap: "0" }}>
+        <div className="loop-profile-tabs" style={{ borderBottom: "1px solid rgba(255,255,255,0.1)", marginBottom: "2rem", display: "flex", gap: "0", overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
           {[
             { key: "posts" as TabType, label: `Posts (${loop.postsCount || 0})` },
             { key: "comments" as TabType, label: `Comments (${loop.commentsCount || 0})` },
@@ -394,7 +395,7 @@ export default function LoopProfilePage() {
         </div>
 
         {/* Main Content */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 350px", gap: "2rem" }}>
+        <div className="loop-profile-content-grid" style={{ display: "grid", gridTemplateColumns: "1fr 350px", gap: "2rem" }}>
           {/* Activities Feed */}
           <div>
             {displayActivity.length === 0 ? (

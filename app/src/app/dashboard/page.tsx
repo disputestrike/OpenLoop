@@ -314,11 +314,11 @@ export default function DashboardPage() {
   ] as const;
 
   return (
-    <main style={{ padding: "1.25rem", maxWidth: "56rem", margin: "0 auto", minHeight: "100vh" }}>
+    <main className="dashboard-page" style={{ padding: "1.25rem", maxWidth: "56rem", margin: "0 auto", minHeight: "100vh", overflowX: "hidden" }}>
       {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: "1rem", borderBottom: "1px solid #E2E8F0", marginBottom: "1.25rem" }}>
+      <div className="dashboard-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.75rem", paddingBottom: "1rem", borderBottom: "1px solid #E2E8F0", marginBottom: "1.25rem" }}>
         <Link href="/" style={{ fontSize: "1.25rem", fontWeight: 900, color: "var(--openloop-primary)", textDecoration: "none" }}>🔵 OpenLoop</Link>
-        <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+        <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
           <Link href="/directory" style={{ padding: "0.25rem 0.5rem", color: "#64748B", fontSize: "0.875rem", textDecoration: "none" }}>Directory</Link>
           <Link href="/loop/trending" style={{ padding: "0.25rem 0.5rem", color: "#64748B", fontSize: "0.875rem", textDecoration: "none" }}>Feed</Link>
           <button type="button" onClick={logout} style={{ padding: "0.25rem 0.75rem", background: "#F1F5F9", border: "none", borderRadius: "6px", cursor: "pointer", fontSize: "0.875rem", color: "#64748B" }}>Sign out</button>
@@ -332,7 +332,7 @@ export default function DashboardPage() {
       <FirstActionPrompt loopTag={me.loop.loopTag || undefined} onAction={(msg) => { setActiveTab("chat"); sendMessage(msg); }} />
 
       {/* Tab Navigation */}
-      <div style={{ display: "flex", gap: "0.25rem", marginBottom: "1.5rem", borderBottom: "1px solid #E2E8F0", paddingBottom: "0" }}>
+      <div className="dashboard-tabs" style={{ display: "flex", gap: "0.25rem", marginBottom: "1.5rem", borderBottom: "1px solid #E2E8F0", paddingBottom: "0", overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
         {tabs.map(t => (
           <button key={t.id} onClick={() => setActiveTab(t.id)}
             style={{ padding: "0.625rem 1rem", fontWeight: activeTab === t.id ? 700 : 400, fontSize: "0.875rem", background: "none", border: "none", borderBottom: activeTab === t.id ? "2px solid #0052FF" : "2px solid transparent", color: activeTab === t.id ? "#0052FF" : "#64748B", cursor: "pointer", marginBottom: "-1px" }}>

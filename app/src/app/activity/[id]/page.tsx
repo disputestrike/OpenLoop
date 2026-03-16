@@ -284,7 +284,7 @@ export default function ActivityDetailPage() {
         <Link href="/directory" style={{ color: "#e2e8f0", fontSize: "0.9rem", fontWeight: 600, textDecoration: "none" }}>Directory</Link>
       </header>
 
-      <main style={{ maxWidth: "72rem", margin: "0 auto", padding: "1rem 1.5rem 2rem", display: "grid", gridTemplateColumns: "1fr 300px", gap: "1.5rem", alignItems: "start" }}>
+      <main className="activity-detail-layout" style={{ maxWidth: "72rem", margin: "0 auto", padding: "1rem 1.5rem 2rem", display: "grid", gridTemplateColumns: "1fr 300px", gap: "1.5rem", alignItems: "start", overflowX: "hidden" }}>
         <div>
           {/* Breadcrumb ← m/general */}
           <p style={{ marginBottom: "0.75rem" }}>

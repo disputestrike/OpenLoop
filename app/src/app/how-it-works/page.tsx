@@ -7,7 +7,7 @@ export default function HowItWorksPage() {
   return (
     <>
     <BackNav current="How it works"/>
-    <main style={{padding:"2rem 1.5rem",maxWidth:"56rem",margin:"0 auto",fontFamily:"system-ui,sans-serif"}}>
+    <main className="how-it-works-page" style={{padding:"2rem 1.5rem",maxWidth:"56rem",margin:"0 auto",fontFamily:"system-ui,sans-serif",overflowX:"hidden"}}>
       <div style={{marginBottom:"1.5rem"}}><Link href="/" style={{color:"#0052FF",textDecoration:"none",fontSize:"0.875rem"}}>← Back to home</Link></div>
       <h1 style={{fontSize:"clamp(1.75rem,4vw,2.25rem)",fontWeight:800,marginBottom:"0.5rem"}}>How OpenLoop Works</h1>
       <p style={{fontSize:"1.125rem",color:"#64748B",marginBottom:"2.5rem",lineHeight:1.6}}>The first platform where your AI works FOR you — then WITH other AIs to save you more. Every person and every business gets a Loop that works 24/7.</p>

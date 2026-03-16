@@ -2,6 +2,9 @@
 
 Use this list to configure **every** external service and secret. Set all of these in Railway → your OpenLoop service → Variables (or in `.env` / `.env.local` for local).
 
+- **Database on Railway:** When you push, the DB is on Railway; migrations and seeds run on deploy. See `RAILWAY_AND_DATABASE.md`.
+- **Competitors (Viktor, Gobii AI, Lindy AI):** See `COMPETITIVE_COMPARISON.md` for how we stack up and what each integration enables.
+
 ---
 
 ## 1. CORE (Required for app to run)
@@ -77,8 +80,9 @@ Use this list to configure **every** external service and secret. Set all of the
 
 | Variable | Description | Where to get it |
 |----------|-------------|-----------------|
-| **ADMIN_SECRET** | Secret for admin panel, audit, analytics, disputes, transactions, corpus | Choose a strong random string; send as header or query param for admin APIs |
-| **CRON_SECRET** | Secret for cron routes (recalculate-trust, seed-votes, daily/hourly engagement) | Choose a strong random string; send as `x-cron-secret` header when calling cron URLs |
+| **ADMIN_SECRET** | Secret for admin panel, audit, analytics, corpus, training-export (header or query) | Choose a strong random string |
+| **ADMIN_API_KEY** | Bearer token for programmatic admin APIs (verifications, disputes) | Same as ADMIN_SECRET or a separate token; send as `Authorization: Bearer <value>` |
+| **CRON_SECRET** | Secret for cron routes (recalculate-trust, seed-votes, daily/hourly engagement, generate-outcomes, backup) | Choose a strong random string; send as `x-cron-secret` header or `?secret=` when calling cron URLs |
 | **ENGAGEMENT_SECRET** | Alternative secret for engagement/cron (used if CRON_SECRET not set) | Same as CRON_SECRET or separate value for engagement service |
 
 ---
@@ -91,10 +95,19 @@ Use this list to configure **every** external service and secret. Set all of the
 | **SLACK_BOT_TOKEN** | Slack bot token (Slack webhook integration) | https://api.slack.com/apps → create app → OAuth & Permissions → Bot User OAuth Token |
 | **SLACK_SIGNING_SECRET** | Slack request signing secret | Slack app → Basic Information → Signing Secret |
 | **TELEGRAM_BOT_TOKEN** | Telegram bot token (Telegram webhook) | Message @BotFather on Telegram → /newbot → copy token |
+| **TELEGRAM_BOT_SECRET_TOKEN** | Optional: if set, Telegram sends it in `x-telegram-bot-api-secret-token`; we reject requests without it | Set in BotFather or Telegram webhook config; same value in Railway |
 
 ---
 
-## 10. N8N (workflow automation)
+## 10. OBSERVABILITY (optional)
+
+| Variable | Description | Where to get it |
+|----------|-------------|-----------------|
+| **SENTRY_DSN** | Sentry project DSN for error tracking (currently stubbed in code; set to enable when Sentry SDK is added) | https://sentry.io — create project, copy DSN |
+
+---
+
+## 11. N8N (workflow automation)
 
 | Variable | Description | Where to get it |
 |----------|-------------|-----------------|
@@ -143,6 +156,7 @@ REDIS_URL=
 
 # ADMIN & CRON
 ADMIN_SECRET=
+ADMIN_API_KEY=
 CRON_SECRET=
 ENGAGEMENT_SECRET=
 
@@ -151,6 +165,10 @@ WEBHOOK_SECRET=
 SLACK_BOT_TOKEN=
 SLACK_SIGNING_SECRET=
 TELEGRAM_BOT_TOKEN=
+TELEGRAM_BOT_SECRET_TOKEN=
+
+# OBSERVABILITY (optional)
+SENTRY_DSN=
 
 # N8N (optional)
 N8N_BASE_URL=
@@ -182,11 +200,37 @@ After deploy, point these at your **NEXT_PUBLIC_APP_URL**:
 | TWILIO_* | SMS, WhatsApp, link-phone, inbound webhook |
 | GOOGLE_* | Google OAuth claim, Google Calendar integration |
 | REDIS_URL | Persistent sessions, event bus (optional but recommended in production) |
-| ADMIN_SECRET | Admin panel, audit, analytics, disputes, corpus |
-| CRON_SECRET / ENGAGEMENT_SECRET | Cron: recalculate-trust, seed-votes, daily/hourly engagement |
+| ADMIN_SECRET | Admin panel, audit, analytics, corpus, training-export |
+| ADMIN_API_KEY | Admin verifications API, disputes API (Bearer token) |
+| CRON_SECRET / ENGAGEMENT_SECRET | Cron: recalculate-trust, seed-votes, daily/hourly engagement, generate-outcomes, backup |
 | WEBHOOK_SECRET | Generic webhook verification (docs) |
 | SLACK_* | Slack webhook integration |
 | TELEGRAM_BOT_TOKEN | Telegram webhook integration |
+| TELEGRAM_BOT_SECRET_TOKEN | Optional Telegram webhook auth (reject if set and header missing) |
+| SENTRY_DSN | Error tracking (when Sentry SDK is wired) |
 | N8N_* | n8n workflow / browser execution bridge |
+
+---
+
+## Integrations: “We have them, but we need the API key”
+
+Every integration is **implemented in code**. It only becomes **active** when the right env var is set in Railway (or `.env` locally):
+
+| Integration | Env vars required | Without key |
+|-------------|-------------------|-------------|
+| Database | DATABASE_URL | App fails in production (Railway provides this) |
+| AI (chat, engagement, hire) | CEREBRAS_API_KEY (or _2…_5) | No AI replies; engagement/hire fallbacks or no-op |
+| Email (magic link, notifications) | RESEND_API_KEY, FROM_EMAIL | No email send; claim may show dev link only |
+| Google sign-in & Calendar | GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, NEXT_PUBLIC_GOOGLE_CLIENT_ID | No Google OAuth; no Calendar |
+| Stripe (payments, tips) | STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET | Checkout/tips disabled or mock |
+| SMS / Twilio | TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER | No SMS; link-phone no-op |
+| Telegram | TELEGRAM_BOT_TOKEN | Telegram webhook returns “not configured” |
+| Slack | SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET | Slack webhook no-op |
+| Redis | REDIS_URL | Cache/event bus fallback to in-memory |
+| Admin APIs | ADMIN_SECRET, ADMIN_API_KEY | Admin routes 401 |
+| Cron (engagement, outcomes, backup) | CRON_SECRET (or ENGAGEMENT_SECRET) | Cron routes reject or no-op |
+| N8N | N8N_BASE_URL, N8N_API_KEY | Browser/workflow bridge unavailable |
+
+**Railway:** Set all variables in the OpenLoop service → Variables. Database is always on Railway when you push; migrations and seeds run on deploy. See `RAILWAY_AND_DATABASE.md`.
 
 With **all** of the above set, OpenLoop is **full operational** across app, AI, email, payments, SMS/WhatsApp, Google, admin, cron, and optional integrations.

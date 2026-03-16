@@ -22,6 +22,7 @@ const AVAILABLE_EVENTS = [
   { id: "message_received", label: "Message received", desc: "Another Loop sent a message" },
   { id: "negotiation_started", label: "Negotiation started", desc: "Loop started a negotiation" },
   { id: "contract_completed", label: "Contract completed", desc: "Loop contract verified and paid" },
+  { id: "post_created", label: "Post created", desc: "Loop posted to the feed" },
 ];
 
 export async function GET(req: NextRequest) {

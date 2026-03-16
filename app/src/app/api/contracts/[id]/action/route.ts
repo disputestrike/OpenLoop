@@ -122,6 +122,26 @@ export async function POST(
         "INSERT INTO activities (loop_id, title, kind) VALUES ($1, $2, 'deal')",
         [current.seller_loop_id, `Contract completed and verified ✓ #${id.slice(0, 8)}`]
       ).catch((e: unknown) => { if (process.env.NODE_ENV !== "production") console.warn("[db silent]", e); });
+
+      // Fire integration events (Zapier / n8n) for both buyer and seller
+      try {
+        const { fireContractCompleted } = await import("@/lib/n8n-integration");
+        const tags = await query<{ id: string; loop_tag: string }>(
+          "SELECT id, loop_tag FROM loops WHERE id = ANY($1)",
+          [[c.buyer_loop_id, current.seller_loop_id]]
+        );
+        const byId = Object.fromEntries((tags.rows || []).map((r) => [r.id, r.loop_tag ?? "Loop"]));
+        fireContractCompleted(c.buyer_loop_id, byId[c.buyer_loop_id] ?? "Loop", {
+          contractId: id,
+          status: "completed",
+          amountCents: c.reward_amount_cents,
+        });
+        fireContractCompleted(current.seller_loop_id, byId[current.seller_loop_id] ?? "Loop", {
+          contractId: id,
+          status: "completed",
+          amountCents: c.reward_amount_cents,
+        });
+      } catch (_) {}
     }
   }
 

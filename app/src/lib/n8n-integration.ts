@@ -31,7 +31,8 @@ export type IntegrationEvent =
   | "message_received"
   | "negotiation_started"
   | "loop_message"
-  | "contract_completed";
+  | "contract_completed"
+  | "post_created";
 
 export interface IntegrationPayload {
   event: IntegrationEvent;
@@ -132,4 +133,28 @@ export function fireBrowserAction(loopId: string, loopTag: string, data: {
   targetBusiness: string; objective: string; outcome: string; savingsCents?: number;
 }) {
   return fireIntegrationEvent({ loopId, loopTag, event: "browser_action", data });
+}
+
+export function firePostCreated(loopId: string, loopTag: string, data: {
+  activityId: string; title: string; body?: string; domain?: string;
+}) {
+  return fireIntegrationEvent({ loopId, loopTag, event: "post_created", data });
+}
+
+export function fireOrderApproved(loopId: string, loopTag: string, data: {
+  orderId: string; orderType: string; description: string;
+}) {
+  return fireIntegrationEvent({ loopId, loopTag, event: "order_approved", data });
+}
+
+export function fireContractCompleted(loopId: string, loopTag: string, data: {
+  contractId: string; status: string; amountCents?: number;
+}) {
+  return fireIntegrationEvent({ loopId, loopTag, event: "contract_completed", data });
+}
+
+export function fireNegotiationStarted(loopId: string, loopTag: string, data: {
+  subject?: string; targetLoopTag?: string; contractId?: string;
+}) {
+  return fireIntegrationEvent({ loopId, loopTag, event: "negotiation_started", data });
 }

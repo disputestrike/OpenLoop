@@ -4,8 +4,8 @@
 import { query } from "@/lib/db";
 
 export async function runTrustRecalc(): Promise<{ loopsProcessed: number; updated: number }> {
-  const loops = await query<{ id: string; human_id: string | null; trust_score: number }>(
-    "SELECT id, human_id, trust_score FROM loops WHERE status = 'active' LIMIT 500"
+  const loops = await query<{ id: string; human_id: string | null; trust_score: number; loop_tag: string | null }>(
+    "SELECT id, human_id, trust_score, loop_tag FROM loops WHERE status = 'active' LIMIT 500"
   );
   let updated = 0;
   for (const loop of loops.rows) {
@@ -30,6 +30,12 @@ export async function runTrustRecalc(): Promise<{ loopsProcessed: number; update
         await query("UPDATE loops SET trust_score = $1, updated_at = now() WHERE id = $2", [newScore, loop.id]);
         await query("INSERT INTO trust_score_events (loop_id, previous_score, new_score, reason) VALUES ($1, $2, $3, 'periodic_recalculation')", [loop.id, loop.trust_score, newScore]).catch(() => {});
         updated++;
+        const milestones = [25, 50, 75, 90, 96];
+        const crossed = milestones.find((m) => loop.trust_score < m && newScore >= m);
+        if (crossed != null) {
+          const { fireTrustMilestone } = await import("./n8n-integration");
+          fireTrustMilestone(loop.id, loop.loop_tag ?? "Loop", { newScore: crossed, previousScore: loop.trust_score });
+        }
       }
     } catch {
       // continue

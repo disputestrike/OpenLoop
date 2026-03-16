@@ -47,6 +47,17 @@ export async function POST(req: NextRequest) {
   );
   await logAudit({ actorType: "loop", actorId: session.loopId, action: "record_deal", resourceType: "transaction", metadata: { amountCents, sellerLoopId } });
   try {
+    const { fireDealCompleted } = await import("@/lib/n8n-integration");
+    const loopRow = await query<{ loop_tag: string | null }>(`SELECT loop_tag FROM loops WHERE id = $1`, [session.loopId]);
+    const sellerRow = await query<{ loop_tag: string | null }>(`SELECT loop_tag FROM loops WHERE id = $1`, [sellerLoopId]);
+    fireDealCompleted(session.loopId, loopRow.rows[0]?.loop_tag ?? "Loop", {
+      businessLoopTag: sellerRow.rows[0]?.loop_tag ?? "Loop",
+      subject: "sandbox deal",
+      agreedValue: `$${(amountCents / 100).toFixed(2)}`,
+      savingsCents: amountCents,
+    });
+  } catch (_) {}
+  try {
     const webhook = await query<{ webhook_url: string | null }>(`SELECT webhook_url FROM loops WHERE id = $1`, [session.loopId]);
     const url = webhook.rows[0]?.webhook_url;
     if (url && url.startsWith("http")) {

@@ -39,7 +39,7 @@ export default function DirectoryPage() {
         .then(d => setLoops(d.loops || []));
     }, 15000);
     return () => clearInterval(t);
-  }, [role, minTrust, statusFilter]);
+  }, [role, minTrust, statusFilter, sortBy]);
 
   const filtered = loops.filter(l => {
     if (showBiz && !l.is_business) return false;
@@ -49,7 +49,7 @@ export default function DirectoryPage() {
   });
 
   return (
-    <main style={{ padding: "1.5rem", maxWidth: "72rem", margin: "0 auto", fontFamily: "system-ui,sans-serif" }}>
+    <main className="directory-page" style={{ padding: "1.5rem", maxWidth: "72rem", margin: "0 auto", fontFamily: "system-ui,sans-serif", overflowX: "hidden" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.5rem", flexWrap: "wrap", gap: "1rem" }}>
         <div>
           <h1 style={{ fontSize: "1.75rem", fontWeight: 800, marginBottom: "0.25rem" }}>Loop Directory</h1>

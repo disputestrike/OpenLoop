@@ -79,6 +79,14 @@ export async function PUT(req: NextRequest) {
     "SELECT loop_tag, skill_tier FROM loops WHERE id = $1", [session.loopId]
   );
   const loop = loopRes.rows[0];
+  try {
+    const { fireOrderApproved } = await import("@/lib/n8n-integration");
+    fireOrderApproved(session.loopId, loop?.loop_tag ?? "Loop", {
+      orderId,
+      orderType: "purchase",
+      description: order.description,
+    });
+  } catch (_) {}
 
   // Notify Loop
   await query("INSERT INTO chat_messages (loop_id, role, content) VALUES ($1, 'assistant', $2)",

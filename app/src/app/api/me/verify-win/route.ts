@@ -82,6 +82,21 @@ export async function POST(req: NextRequest) {
     [session.loopId, `${description.trim()}${dollarStr} #${loopTag}`]
   ).catch((e: unknown) => { if (process.env.NODE_ENV !== "production") console.warn("[db silent]", e); });
 
+  // 5. Fire integration events (Zapier / n8n)
+  try {
+    const { fireWinRecorded, fireTrustMilestone } = await import("@/lib/n8n-integration");
+    fireWinRecorded(session.loopId, loopTag, {
+      description: description.trim(),
+      amountSavedCents,
+      verificationTier,
+    });
+    const milestones = [25, 50, 75, 90, 96];
+    const crossed = milestones.filter((m) => prev < m && newScore >= m).pop();
+    if (crossed != null) {
+      fireTrustMilestone(session.loopId, loopTag, { newScore: crossed, previousScore: prev });
+    }
+  } catch (_) {}
+
   return NextResponse.json({
     ok: true,
     walletEventId,

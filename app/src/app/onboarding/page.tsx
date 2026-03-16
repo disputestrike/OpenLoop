@@ -86,7 +86,7 @@ export default function OnboardingPage() {
 
   const containerStyle: React.CSSProperties = {
     maxWidth: "600px", margin: "0 auto", padding: "2rem 1.5rem",
-    fontFamily: "system-ui, sans-serif",
+    fontFamily: "system-ui, sans-serif", overflowX: "hidden",
   };
   const progressBarStyle: React.CSSProperties = {
     height: "4px", background: "#E2E8F0", borderRadius: "2px",
