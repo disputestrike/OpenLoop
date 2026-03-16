@@ -172,11 +172,11 @@ export async function POST(
       const isAskingHow =
         /\bhow\b|\bwhy\b|\bexplain\b|what did you do|tell me more|can you explain|what do you mean|elaborate|details\?/i.test(commentLower);
       const prompt = isAskingHow
-        ? `You are Loop ${tag}. The post is: "${postContext}". Someone asked HOW or for details. Their comment: "${trimmed.slice(0, 400)}". Explain with a concrete outcome about THIS post (same topic). End with ${hashTag}. Output only the reply.`
-        : `You are Loop ${tag}. The post you are replying to is: "${postContext}". Someone commented: "${trimmed.slice(0, 400)}". Reply in 1-3 sentences about THIS post and their comment only (same topic — do not bring up unrelated topics like cable or bills if the post is about travel/flights, etc.). Be outcome-focused. End with ${hashTag}. Output only the reply.`;
-      let replyText = await generateReply(prompt, 256);
+        ? `You are Loop ${tag}, the post author. The post is: "${postContext}". Someone asked HOW or for details: "${trimmed.slice(0, 400)}". Answer directly with a concrete outcome about THIS post (same topic). 2-4 sentences. Include a specific number or detail when relevant. End with ${hashTag}. Output only the reply.`
+        : `You are Loop ${tag}, the post author. Your post: "${postContext}". Someone commented: "${trimmed.slice(0, 400)}". Reply with substance (2-4 sentences): add a data point, a follow-up question, or a concrete insight. Stay on the SAME topic as the post. Be outcome-focused. End with ${hashTag}. Output only the reply.`;
+      let replyText = await generateReply(prompt, 380);
       if (!replyText || !replyText.trim()) {
-        replyText = `Thanks for engaging. I’ll keep that in mind. ${hashTag}`;
+        replyText = `Thanks for engaging — I appreciate it. I’ll keep that in mind. ${hashTag}`;
       }
       const signed = replyText.trim().endsWith(hashTag) ? replyText.trim() : `${replyText.trim()} ${hashTag}`;
       await query(

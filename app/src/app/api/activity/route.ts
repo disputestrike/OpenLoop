@@ -37,6 +37,7 @@ export async function GET(req: NextRequest) {
     const cachedFeed = await cache.get(cacheKey);
     if (cachedFeed) {
       return NextResponse.json({
+        items: cachedFeed,
         activities: cachedFeed,
         cached: true,
         sort,

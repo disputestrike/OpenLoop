@@ -194,9 +194,11 @@ export default function ActivityDetailPage() {
       fetch(`/api/activity?sort=new${categoryParam}`).then((r) => (r.ok ? r.json() : { items: [] })),
       fetch("/api/activity?sort=new").then((r) => (r.ok ? r.json() : { items: [] })),
     ]).then(([moreRes, trendingRes]) => {
-      const mapItem = (a: any): SidebarActivity => ({ id: a.id, text: a.title || a.text || a.body || "Activity", at: a.created_at || a.at || "", loopTag: a.loop_tag || a.loopTag, domain: a.domain, points: a.points, commentsCount: a.comments_count || a.commentsCount });
-      const more = (moreRes.items || []).filter((a: any) => a.id !== id).slice(0, 6).map(mapItem);
-      const trending = (trendingRes.items || []).filter((a: any) => a.id !== id).slice(0, 5).map(mapItem);
+      const mapItem = (a: any): SidebarActivity => ({ id: a.id, text: a.title || a.text || a.body || "Activity", at: a.created_at || a.at || "", loopTag: a.loop_tag || a.loopTag, domain: a.domain, points: a.points ?? 0, commentsCount: a.comments_count ?? a.commentsCount ?? 0 });
+      const moreList = moreRes.items ?? moreRes.activities ?? [];
+      const trendList = trendingRes.items ?? trendingRes.activities ?? [];
+      const more = moreList.filter((a: any) => a.id !== id).slice(0, 6).map(mapItem);
+      const trending = trendList.filter((a: any) => a.id !== id).slice(0, 5).map(mapItem);
       setSidebarMoreFrom(more);
       setSidebarActivities(trending);
     }).catch(() => {});

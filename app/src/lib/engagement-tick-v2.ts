@@ -49,14 +49,14 @@ function markKeyRateLimited(key: string): void {
 }
 
 // ─── CEREBRAS CALL ────────────────────────────────────
-async function callCerebras(system: string, user: string): Promise<string | null> {
+async function callCerebras(system: string, user: string, maxTokens = 400): Promise<string | null> {
   const key = getCerebrasKey();
   if (!key) return null;
   try {
     const res = await fetch(CEREBRAS_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
-      body: JSON.stringify({ model: MODEL, messages: [{ role: "system", content: system }, { role: "user", content: user }], max_tokens: 400, temperature: 0.8 }),
+      body: JSON.stringify({ model: MODEL, messages: [{ role: "system", content: system }, { role: "user", content: user }], max_tokens: maxTokens, temperature: 0.8 }),
     });
     if (!res.ok) { if (res.status === 429) markKeyRateLimited(key); return null; }
     const data = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
@@ -141,33 +141,47 @@ Sound like: "Quick question: How did you handle [specific scenario]? I tried [ap
   },
 ];
 
-// ─── BACKFILL: post author replies to comments that have no reply yet ─────
+// ─── BACKFILL: post author replies to EVERY comment that has no reply yet ─────
+// Each non-author comment must be followed by an author reply. Find every such "orphan" and add a reply.
 async function backfillUnrepliedPosts(): Promise<void> {
   const unreplied = await query<{
     activity_id: string;
-    title: string;
-    body: string | null;
+    activity_title: string;
+    activity_body: string | null;
     owner_loop_id: string;
     owner_tag: string | null;
-    last_comment_body: string;
+    comment_body: string;
+    comment_created_at: string;
   }>(
-    `SELECT a.id AS activity_id, a.title, a.body, a.loop_id AS owner_loop_id, l.loop_tag AS owner_tag, last_c.body AS last_comment_body
-     FROM activities a
-     LEFT JOIN loops l ON l.id = a.loop_id
-     INNER JOIN LATERAL (
-       SELECT body FROM activity_comments c2 WHERE c2.activity_id = a.id ORDER BY c2.created_at DESC LIMIT 1
-     ) last_c ON true
-     WHERE a.loop_id IS NOT NULL
-       AND EXISTS (SELECT 1 FROM activity_comments c3 WHERE c3.activity_id = a.id)
-       AND NOT EXISTS (SELECT 1 FROM activity_comments c4 WHERE c4.activity_id = a.id AND c4.loop_id = a.loop_id)
-     ORDER BY RANDOM() LIMIT 5`
+    `WITH ordered AS (
+       SELECT c.activity_id, c.loop_id, c.body AS comment_body, c.created_at,
+              a.loop_id AS owner_loop_id, a.title AS activity_title, a.body AS activity_body
+       FROM activity_comments c
+       JOIN activities a ON a.id = c.activity_id AND a.loop_id IS NOT NULL
+     ),
+     with_next AS (
+       SELECT o.*, l.loop_tag AS owner_tag,
+              (SELECT c2.loop_id FROM activity_comments c2
+               WHERE c2.activity_id = o.activity_id AND c2.created_at > o.created_at
+               ORDER BY c2.created_at ASC LIMIT 1) AS next_loop_id
+       FROM ordered o
+       LEFT JOIN loops l ON l.id = o.owner_loop_id
+     )
+     SELECT activity_id, activity_title, activity_body, owner_loop_id, owner_tag, comment_body, created_at AS comment_created_at
+     FROM with_next
+     WHERE loop_id != owner_loop_id
+       AND (next_loop_id IS NULL OR next_loop_id != owner_loop_id)
+     ORDER BY RANDOM() LIMIT 12`
   ).catch(() => ({ rows: [] as any[] }));
 
   for (const row of unreplied.rows) {
-    const system = `You are @${row.owner_tag ?? "Loop"}, the post author. Reply to this comment. If it's a question, answer it directly. Stay on the SAME topic/domain as your post. 2-3 sentences. No hashtags.`;
-    const user = `Post: "${(row.title + (row.body ? " " + row.body.slice(0, 150) : "")).slice(0, 300)}"\nComment: "${row.last_comment_body.slice(0, 350)}"\nWrite your reply. Same topic only.`;
+    const system = `You are @${row.owner_tag ?? "Loop"}, the author of this post. Someone commented — you must reply.
+If the comment asks a QUESTION, answer it directly with a specific, helpful response (2-4 sentences).
+Otherwise reply with substance: add a data point, a follow-up question, or a concrete insight. Stay on the SAME topic/domain as your post. Do NOT drift to other subjects.
+Include a specific number or detail when relevant. No hashtags. Write with depth — not a one-liner.`;
+    const user = `Post: "${(row.activity_title + (row.activity_body ? " " + row.activity_body.slice(0, 150) : "")).slice(0, 350)}"\n\nComment: "${row.comment_body.slice(0, 400)}"\n\nWrite your reply (2-4 sentences). If they asked a question, answer it. Same topic only.`;
     const reply = await callCerebras(system, user);
-    if (!reply || reply.length < 10) continue;
+    if (!reply || reply.length < 15) continue;
     try {
       await query(
         `INSERT INTO activity_comments (activity_id, loop_id, body) VALUES ($1, $2, $3)`,
@@ -176,6 +190,7 @@ async function backfillUnrepliedPosts(): Promise<void> {
     } catch {
       // skip
     }
+    await new Promise((r) => setTimeout(r, 800));
   }
 }
 
@@ -427,19 +442,25 @@ ${commentType.prompt}
 
 Write your comment now. 2-4 sentences. Include a specific number. Reference the post content.`;
 
-      const comment = await callCerebras(system, user);
-      if (!comment || comment.length < 20) continue;
+      const comment = await callCerebras(system, user, 380);
+      if (!comment || comment.length < 40) continue;
 
       await query(
         `INSERT INTO activity_comments (activity_id, loop_id, body) VALUES ($1, $2, $3)`,
         [post.id, commenter.id, comment.slice(0, 2000)]
       );
 
-      // Post author replies to this comment (loop responds to loop — answer questions, keep thread going)
-      const authorReplySystem = `You are @${post.loop_tag || "Loop"}, the author of this post. Someone commented. If the comment asks a QUESTION, answer it directly with a specific, helpful response. Otherwise reply in 2-3 sentences. Stay on the SAME topic/domain as your post — do not drift to other subjects. Include a specific number or detail when relevant. No hashtags.`;
-      const authorReplyUser = `Your post: "${(post.title + (post.body && post.body !== post.title ? " " + post.body.slice(0, 200) : "")).slice(0, 400)}"\n\nComment: "${comment.slice(0, 400)}"\n\nWrite your reply. If they asked a question, answer it.`;
-      const authorReply = await callCerebras(authorReplySystem, authorReplyUser);
-      if (authorReply && authorReply.length >= 15 && post.loop_id) {
+      // Post author replies to EVERY comment (rich, on-topic — like we had before)
+      const authorReplySystem = `You are @${post.loop_tag || "Loop"}, the author of this post. Someone commented — you must reply to keep the conversation going.
+If the comment asks a QUESTION, answer it directly with a specific, helpful response (2-4 sentences).
+Otherwise reply with substance: add a data point, a follow-up question, or a concrete insight. Stay on the SAME topic/domain as your post. Do NOT drift to other subjects.
+Include a specific number or detail when relevant. No hashtags. Write with depth — not a one-liner.`;
+      const authorReplyUser = `Your post: "${(post.title + (post.body && post.body !== post.title ? " " + post.body.slice(0, 200) : "")).slice(0, 400)}"\n\nComment: "${comment.slice(0, 400)}"\n\nWrite your reply (2-4 sentences). If they asked a question, answer it. Same topic only.`;
+      let authorReply = await callCerebras(authorReplySystem, authorReplyUser, 450);
+      if (!authorReply || authorReply.length < 15) {
+        authorReply = `Thanks for the comment — I appreciate the engagement. I'll keep that in mind.`;
+      }
+      if (post.loop_id) {
         await query(
           `INSERT INTO activity_comments (activity_id, loop_id, body) VALUES ($1, $2, $3)`,
           [post.id, post.loop_id, authorReply.slice(0, 2000)]
