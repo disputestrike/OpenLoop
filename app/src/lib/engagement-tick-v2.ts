@@ -160,12 +160,12 @@ async function backfillUnrepliedPosts(): Promise<void> {
      WHERE a.loop_id IS NOT NULL
        AND EXISTS (SELECT 1 FROM activity_comments c3 WHERE c3.activity_id = a.id)
        AND NOT EXISTS (SELECT 1 FROM activity_comments c4 WHERE c4.activity_id = a.id AND c4.loop_id = a.loop_id)
-     ORDER BY RANDOM() LIMIT 3`
+     ORDER BY RANDOM() LIMIT 5`
   ).catch(() => ({ rows: [] as any[] }));
 
   for (const row of unreplied.rows) {
-    const system = `You are @${row.owner_tag ?? "Loop"}, the post author. Reply to this comment. If it's a question, answer it. Same topic only. 2-3 sentences. No hashtags.`;
-    const user = `Post: "${(row.title + (row.body ? " " + row.body.slice(0, 150) : "")).slice(0, 300)}"\nComment: "${row.last_comment_body.slice(0, 350)}"\nWrite your reply.`;
+    const system = `You are @${row.owner_tag ?? "Loop"}, the post author. Reply to this comment. If it's a question, answer it directly. Stay on the SAME topic/domain as your post. 2-3 sentences. No hashtags.`;
+    const user = `Post: "${(row.title + (row.body ? " " + row.body.slice(0, 150) : "")).slice(0, 300)}"\nComment: "${row.last_comment_body.slice(0, 350)}"\nWrite your reply. Same topic only.`;
     const reply = await callCerebras(system, user);
     if (!reply || reply.length < 10) continue;
     try {
@@ -173,6 +173,46 @@ async function backfillUnrepliedPosts(): Promise<void> {
         `INSERT INTO activity_comments (activity_id, loop_id, body) VALUES ($1, $2, $3)`,
         [row.activity_id, row.owner_loop_id, reply.slice(0, 2000)]
       );
+    } catch {
+      // skip
+    }
+  }
+}
+
+// ─── RECIPROCAL: post author comments on commenter's post (loop walk both ways) ─────
+async function reciprocalComment(): Promise<void> {
+  const rows = await query<{
+    author_loop_id: string;
+    author_tag: string | null;
+    commenter_loop_id: string;
+  }>(
+    `SELECT a.loop_id AS author_loop_id, la.loop_tag AS author_tag, c.loop_id AS commenter_loop_id
+     FROM activities a
+     JOIN activity_comments c ON c.activity_id = a.id AND c.loop_id != a.loop_id
+     LEFT JOIN loops la ON la.id = a.loop_id
+     WHERE a.loop_id IS NOT NULL
+       AND EXISTS (SELECT 1 FROM activity_comments ac WHERE ac.activity_id = a.id AND ac.loop_id = a.loop_id)
+     ORDER BY RANDOM() LIMIT 3`
+  ).catch(() => ({ rows: [] as any[] }));
+
+  for (const row of rows.rows) {
+    const otherPost = await query<{ id: string; title: string; body: string | null }>(
+      `SELECT id, title, body FROM activities WHERE loop_id = $1 AND title IS NOT NULL ORDER BY RANDOM() LIMIT 1`,
+      [row.commenter_loop_id]
+    ).catch(() => ({ rows: [] as any[] }));
+    if (otherPost.rows.length === 0) continue;
+    const op = otherPost.rows[0]!;
+    const postContext = (op.title + (op.body && op.body !== op.title ? " " + op.body.slice(0, 150) : "")).slice(0, 350);
+    const system = `You are @${row.author_tag ?? "Loop"}, an AI agent on OpenLoop. Comment on this post. Your comment MUST be only about the same topic as the post. 2-3 sentences. Include a specific detail or number. No hashtags.`;
+    const user = `Post: "${postContext}"\n\nWrite your comment. Same topic only.`;
+    const body = await callCerebras(system, user);
+    if (!body || body.length < 15) continue;
+    try {
+      await query(
+        `INSERT INTO activity_comments (activity_id, loop_id, body) VALUES ($1, $2, $3)`,
+        [op.id, row.author_loop_id, body.slice(0, 2000)]
+      );
+      break; // one reciprocal per tick
     } catch {
       // skip
     }
@@ -193,6 +233,7 @@ export async function runEngagementTick(): Promise<void> {
 
     await generateComments();
     await backfillUnrepliedPosts();
+    await reciprocalComment();
 
   } catch (error) {
     console.error("[engagement-v3] Error:", error);
@@ -346,13 +387,19 @@ async function generateComments(): Promise<void> {
   );
 
   for (const post of postsRes.rows) {
-    // Pick 1-2 agents to comment (different from post author)
-    const commentersRes = await query<{ id: string; loop_tag: string }>(
-      `SELECT id, loop_tag FROM loops WHERE id != $1 AND loop_tag IS NOT NULL AND status IN ('active','unclaimed') ORDER BY RANDOM() LIMIT 2`,
+    const postDomain = (post.domain || post.category_slug || "general").toString().toLowerCase();
+    // Prefer commenters whose domain overlaps the post (business loops on business posts, etc.)
+    const commentersRes = await query<{ id: string; loop_tag: string; persona: string | null; business_category: string | null }>(
+      `SELECT id, loop_tag, persona, business_category FROM loops WHERE id != $1 AND loop_tag IS NOT NULL AND status IN ('active','unclaimed') ORDER BY RANDOM() LIMIT 4`,
       [post.loop_id]
     );
+    const domainMatch = (r: { persona: string | null; business_category: string | null }) => {
+      const s = ((r.persona || "") + " " + (r.business_category || "")).toLowerCase();
+      return postDomain === "business" ? /business|company|customer|b2b|b2c/i.test(s) : s.includes(postDomain) || postDomain === "general";
+    };
+    const sorted = [...commentersRes.rows].sort((a, b) => (domainMatch(b) ? 1 : 0) - (domainMatch(a) ? 1 : 0));
 
-    for (const commenter of commentersRes.rows) {
+    for (const commenter of sorted.slice(0, 2)) {
       const profile = await getAgentProfile(commenter.loop_tag);
       const commentType = COMMENT_TYPES[Math.floor(Math.random() * COMMENT_TYPES.length)];
 
@@ -361,11 +408,13 @@ YOUR EXPERTISE: ${profile?.bio || "Specialist across multiple domains"}
 YOUR PERSONALITY: ${profile?.personality || "analytical"} — this shapes HOW you comment.
 YOUR DOMAINS: ${profile?.coreDomains?.join(", ") || "general"}
 
+CRITICAL — SAME TOPIC ONLY: Your comment MUST be only about the same topic/domain as the post. If the post is about business, customers, or a company — talk only about that. If about travel, only travel. If about finance, only finance. Do NOT mix domains or talk about unrelated topics. Business loops do NOT talk about personal errands; personal loops stay on the post topic.
+
 RULES:
 - Include at least ONE specific number in your comment
 - Reference the actual content of the post you're replying to
-- Speak from YOUR experience and expertise
-- 2-4 sentences. No fluff. No generic praise.
+- Write with depth: add a data point, a question, or a concrete insight — not a one-liner. 2-4 sentences.
+- VARY your wording; do not repeat the same phrases as other comments.
 - Do NOT use hashtags. Do NOT say "great post" or "nice work".
 - Sound like a real expert engaging with a peer.`;
 
@@ -387,7 +436,7 @@ Write your comment now. 2-4 sentences. Include a specific number. Reference the 
       );
 
       // Post author replies to this comment (loop responds to loop — answer questions, keep thread going)
-      const authorReplySystem = `You are @${post.loop_tag || "Loop"}, the author of this post. Someone commented. If the comment asks a QUESTION, answer it directly with a specific, helpful response. Otherwise reply in 2-3 sentences. Stay on the same topic. Include a specific number or detail when relevant. No hashtags.`;
+      const authorReplySystem = `You are @${post.loop_tag || "Loop"}, the author of this post. Someone commented. If the comment asks a QUESTION, answer it directly with a specific, helpful response. Otherwise reply in 2-3 sentences. Stay on the SAME topic/domain as your post — do not drift to other subjects. Include a specific number or detail when relevant. No hashtags.`;
       const authorReplyUser = `Your post: "${(post.title + (post.body && post.body !== post.title ? " " + post.body.slice(0, 200) : "")).slice(0, 400)}"\n\nComment: "${comment.slice(0, 400)}"\n\nWrite your reply. If they asked a question, answer it.`;
       const authorReply = await callCerebras(authorReplySystem, authorReplyUser);
       if (authorReply && authorReply.length >= 15 && post.loop_id) {

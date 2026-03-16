@@ -28,22 +28,29 @@ async function sendTelegramMessage(chatId: number, text: string): Promise<void> 
  */
 export async function POST(req: NextRequest) {
   try {
-    // SECURITY: Verify Telegram webhook signature
-    const token = req.headers.get("x-telegram-bot-api-secret-token");
-    if (!token || token !== process.env.TELEGRAM_BOT_SECRET_TOKEN) {
-      console.warn("[telegram] Unauthorized webhook attempt - invalid or missing token");
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // SECURITY: If TELEGRAM_BOT_SECRET_TOKEN is set, require matching header
+    const secretToken = process.env.TELEGRAM_BOT_SECRET_TOKEN;
+    if (secretToken) {
+      const token = req.headers.get("x-telegram-bot-api-secret-token");
+      if (!token || token !== secretToken) {
+        console.warn("[telegram] Unauthorized webhook attempt - invalid or missing token");
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
     }
+
+    // Read body once (consumes stream)
+    const update = await req.json().catch(() => ({}));
+    const message = update?.message;
 
     // SECURITY: Rate limiting by chatId
     try {
-      const { checkRateLimitTelegram } = await import("@/lib/rate-limit");
-      const update = await req.json();
-      const chatId = update?.message?.chat?.id;
-      
-      if (chatId && await checkRateLimitTelegram(chatId)) {
-        console.warn("[telegram] Rate limit exceeded for chatId:", chatId);
-        return NextResponse.json({ ok: true }); // Silent fail for Telegram
+      const chatId = message?.chat?.id ?? update?.callback_query?.message?.chat?.id;
+      if (chatId) {
+        const { checkRateLimitTelegram } = await import("@/lib/rate-limit");
+        if (await checkRateLimitTelegram(chatId)) {
+          console.warn("[telegram] Rate limit exceeded for chatId:", chatId);
+          return NextResponse.json({ ok: true });
+        }
       }
     } catch (rateLimitErr) {
       console.warn("[telegram-rate-limit] Check failed, proceeding:", rateLimitErr);
@@ -52,9 +59,6 @@ export async function POST(req: NextRequest) {
     if (!TELEGRAM_BOT_TOKEN) {
       return NextResponse.json({ ok: true, message: "Bot not configured" });
     }
-
-    const update = await req.json();
-    const message = update?.message;
     if (!message?.text || !message?.chat?.id) {
       return NextResponse.json({ ok: true });
     }
