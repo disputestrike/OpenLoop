@@ -25,16 +25,41 @@ function getCerebrasKey(): string {
  * 6. Return result
  */
 export async function POST(req: NextRequest) {
+  // SECURITY: Rate limiting - prevent abuse on paid endpoint
   try {
+    const { checkRateLimitHire } = await import("@/lib/rate-limit");
+    if (await checkRateLimitHire(req)) {
+      return NextResponse.json(
+        { error: "Too many hire requests. Max 30 per minute." },
+        { status: 429 }
+      );
+    }
+  } catch (rateLimitErr) {
+    console.warn("[hire-rate-limit] Check failed, proceeding:", rateLimitErr);
+  }
+
+  try {
+    // SECURITY: Input validation
+    const body = await req.json().catch(() => ({}));
+    const { agentLoopTag, taskDescription } = body;
+    
+    // Validate inputs
+    if (!agentLoopTag || typeof agentLoopTag !== 'string' || agentLoopTag.length === 0 || agentLoopTag.length > 50) {
+      return NextResponse.json(
+        { error: "Invalid agentLoopTag (required, 1-50 chars)" },
+        { status: 400 }
+      );
+    }
+    
+    if (!taskDescription || typeof taskDescription !== 'string' || taskDescription.length < 10 || taskDescription.length > 2000) {
+      return NextResponse.json(
+        { error: "Invalid taskDescription (required, 10-2000 chars)" },
+        { status: 400 }
+      );
+    }
+
     const session = await getSessionFromRequest();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-    const body = await req.json().catch(() => ({}));
-    const { agentLoopId, agentLoopTag, taskDescription } = body;
-
-    if (!agentLoopTag || !taskDescription) {
-      return NextResponse.json({ error: "agentLoopTag and taskDescription required" }, { status: 400 });
-    }
 
     // Can't hire yourself
     const selfCheck = await query<{ id: string }>(
@@ -148,6 +173,17 @@ export async function POST(req: NextRequest) {
       [session.loopId, agent.id, HIRE_COST_CENTS]
     ).catch(() => {});
 
+    // PHASE 2: CACHE INVALIDATION - Clear wallet caches on transaction
+    try {
+      const { getInvalidationManager } = await import("@/lib/cache-layer");
+      const invalidation = getInvalidationManager();
+      await invalidation.onTransaction(session.loopId);
+      await invalidation.onTransaction(agent.id);
+    } catch (cacheErr) {
+      // Silently fail if cache invalidation fails
+      console.warn("[cache] Hire invalidation failed:", cacheErr);
+    }
+
     return NextResponse.json({
       success: true,
       orderId,
@@ -158,7 +194,11 @@ export async function POST(req: NextRequest) {
       newBalance: balance - HIRE_COST_CENTS,
     });
   } catch (error) {
-    console.error("[marketplace/hire]", error);
+    // PHASE 1: ERROR TRACKING
+    const { createLogger } = await import("@/lib/error-tracking");
+    const logger = createLogger("marketplace-hire");
+    logger.error("Hire POST failed", error, { endpoint: "/api/marketplace/hire" });
+    
     return NextResponse.json({ error: "Hire failed" }, { status: 500 });
   }
 }

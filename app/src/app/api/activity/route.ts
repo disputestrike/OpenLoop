@@ -12,7 +12,38 @@ const TICK_THROTTLE_MS = 2 * 60 * 1000; // run engagement tick at most every 2 m
 const OUTCOMES_THROTTLE_MS = 30 * 60 * 1000; // run generate-outcomes at most every 30 min so in-scope posts appear without separate cron
 
 export async function GET(req: NextRequest) {
+  // SECURITY: Rate limiting - prevent DDoS
   try {
+    const { checkRateLimitActivity } = await import("@/lib/rate-limit");
+    if (await checkRateLimitActivity(req)) {
+      return NextResponse.json(
+        { error: "Too many requests. Max 100 per minute." },
+        { status: 429 }
+      );
+    }
+  } catch (rateLimitErr) {
+    console.warn("[activity-rate-limit] Check failed, proceeding:", rateLimitErr);
+  }
+
+  try {
+    // PHASE 2: CACHING - Import cache layer
+    const { getCacheLayer, CACHE_KEYS, CACHE_TTLS } = await import("@/lib/cache-layer");
+    const cache = getCacheLayer();
+    
+    const sort = (req.nextUrl?.searchParams?.get("sort") || "new").toLowerCase();
+    const cacheKey = `${CACHE_KEYS.ACTIVITY_FEED}:${sort}`;
+    
+    // Try cache first
+    const cachedFeed = await cache.get(cacheKey);
+    if (cachedFeed) {
+      return NextResponse.json({
+        activities: cachedFeed,
+        cached: true,
+        sort,
+        timestamp: new Date().toISOString(),
+      });
+    }
+
   const now = Date.now();
 
   // Run generate-outcomes periodically so domain-scoped posts appear (no separate Railway cron needed)
@@ -127,22 +158,33 @@ export async function GET(req: NextRequest) {
         globalThis._engagementTriggered = false;
       });
     }
+    
+    // Format activities for response
+    const activities = filtered.map((r) => ({
+      id: r.id,
+      text: r.title,
+      body: r.body || undefined,
+      at: r.created_at,
+      loopId: r.loop_id || undefined,
+      loopTag: r.loop_tag || undefined,
+      kind: r.kind,
+      domain: "domain" in r ? (r.domain || undefined) : undefined,
+      categorySlug: domainToCategorySlug("domain" in r ? r.domain : null),
+      points: Number(r.points ?? 0),
+      commentsCount: Number(r.comments_count ?? 0),
+      verified: Number(r.trust_score ?? 0) >= 70,
+    }));
+    
+    // PHASE 2: CACHE SET - Store activity feed for 2 minutes
+    const { getCacheLayer, CACHE_KEYS, CACHE_TTLS } = await import("@/lib/cache-layer");
+    const cache = getCacheLayer();
+    const cacheKey = `${CACHE_KEYS.ACTIVITY_FEED}:${sort}`;
+    await cache.set(cacheKey, activities, CACHE_TTLS.ACTIVITY_FEED);
+    
     return NextResponse.json({
-      items: filtered.map((r) => ({
-        id: r.id,
-        text: r.title,
-        body: r.body || undefined,
-        at: r.created_at,
-        loopId: r.loop_id || undefined,
-        loopTag: r.loop_tag || undefined,
-        kind: r.kind,
-        domain: "domain" in r ? (r.domain || undefined) : undefined,
-        categorySlug: domainToCategorySlug("domain" in r ? r.domain : null),
-        points: Number(r.points ?? 0),
-        commentsCount: Number(r.comments_count ?? 0),
-        verified: Number(r.trust_score ?? 0) >= 70,
-      })),
+      items: activities,
       totalActive: filtered.length,
+      cached: false,
     });
   } catch {
     // fallback: only real transactions, no placeholders

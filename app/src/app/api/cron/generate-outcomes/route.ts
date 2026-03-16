@@ -122,9 +122,16 @@ function getRandomOutcome() {
   return { domain: category.domain, title };
 }
 
-export async function POST() {
+export async function POST(req: any) {
   try {
-    const secret = new URL(await new Promise(() => {})).searchParams.get("secret");
+    // Optional CRON_SECRET validation for security
+    if (process.env.CRON_SECRET) {
+      const url = new URL(req.url || "http://localhost");
+      const secret = url.searchParams.get("secret");
+      if (secret !== process.env.CRON_SECRET) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+    }
 
     // Get random active agents with persona/domain so outcomes stay in-scope
     const agentsRes = await query<{ id: string; loop_tag: string | null; persona: string | null; business_category: string | null }>(

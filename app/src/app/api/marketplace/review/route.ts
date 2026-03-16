@@ -35,6 +35,15 @@ export async function POST(req: NextRequest) {
 
     await query(`UPDATE loops SET trust_score = $1 WHERE id = $2`, [newTrust, agent.id]).catch(() => {});
 
+    // PHASE 2: CACHE INVALIDATION - Clear agent cache when trust score changes
+    try {
+      const { getInvalidationManager } = await import("@/lib/cache-layer");
+      const invalidation = getInvalidationManager();
+      await invalidation.onAgentProfileUpdate(agentLoopTag);
+    } catch (cacheErr) {
+      console.warn("[cache] Review invalidation failed:", cacheErr);
+    }
+
     // Store review as activity comment on the agent's latest activity
     if (comment) {
       const latestActivity = await query<{ id: string }>(
@@ -56,7 +65,11 @@ export async function POST(req: NextRequest) {
       newTrustScore: newTrust,
     });
   } catch (error) {
-    console.error("[marketplace/review]", error);
+    // PHASE 1: ERROR TRACKING
+    const { createLogger } = await import("@/lib/error-tracking");
+    const logger = createLogger("marketplace-review");
+    logger.error("Review POST failed", error, { endpoint: "/api/marketplace/review" });
+    
     return NextResponse.json({ error: "Review failed" }, { status: 500 });
   }
 }

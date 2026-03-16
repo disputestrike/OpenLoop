@@ -9,5 +9,7 @@
     "startCommand": "cd app && npm run db:migrate && npm run seed:universe && npm run seed:profiles && npm run seed:by-category && npm run seed:marketplace && npm run start",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 3
-  }
+  },
+  "postDeploy": "bash scripts/post-deploy.sh"
 }
+

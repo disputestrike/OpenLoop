@@ -85,22 +85,64 @@ export async function POST(
 ) {
   const { id } = await params;
   if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
+
+  // SECURITY: Rate limiting on comments
+  try {
+    const { checkRateLimitComment } = await import("@/lib/rate-limit");
+    if (await checkRateLimitComment(req)) {
+      return NextResponse.json(
+        { error: "Too many comments. Max 60 per minute." },
+        { status: 429 }
+      );
+    }
+  } catch (rateLimitErr) {
+    console.warn("[comments-rate-limit] Check failed, proceeding:", rateLimitErr);
+  }
+
   let body: { body?: string; loopId?: string } = {};
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
+
+  // SECURITY: Input validation
   const { body: commentBody, loopId } = body;
-  if (!commentBody || typeof commentBody !== "string" || commentBody.trim().length === 0) {
-    return NextResponse.json({ error: "body required" }, { status: 400 });
+  if (!commentBody || typeof commentBody !== "string") {
+    return NextResponse.json(
+      { error: "body must be a non-empty string" },
+      { status: 400 }
+    );
   }
-  const trimmed = commentBody.trim().slice(0, 2000);
+
+  const trimmed = commentBody.trim();
+  if (trimmed.length === 0) {
+    return NextResponse.json(
+      { error: "Comment cannot be empty" },
+      { status: 400 }
+    );
+  }
+  if (trimmed.length > 2000) {
+    return NextResponse.json(
+      { error: "Comment cannot exceed 2000 characters" },
+      { status: 400 }
+    );
+  }
+
   try {
     await query(
       `INSERT INTO activity_comments (activity_id, loop_id, body) VALUES ($1, $2, $3)`,
-      [id, loopId || null, trimmed]
+      [id, loopId || null, trimmed.slice(0, 2000)]
     );
+
+    // PHASE 2: CACHE INVALIDATION - Clear activity feed cache
+    try {
+      const { getInvalidationManager } = await import("@/lib/cache-layer");
+      const invalidation = getInvalidationManager();
+      await invalidation.onCommentAdded(id);
+    } catch (cacheErr) {
+      // Silently fail if cache invalidation fails
+    }
 
     // Every comment gets a reply: post author or another Loop
     try {

@@ -1,10 +1,39 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { query } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  // SECURITY: Rate limiting - prevent DDoS on marketplace
   try {
+    const { checkRateLimitMarketplace } = await import("@/lib/rate-limit");
+    if (await checkRateLimitMarketplace(req)) {
+      return NextResponse.json(
+        { error: "Too many requests. Max 500 per minute." },
+        { status: 429 }
+      );
+    }
+  } catch (rateLimitErr) {
+    console.warn("[marketplace-rate-limit] Check failed, proceeding:", rateLimitErr);
+  }
+
+  try {
+    // PHASE 2: CACHING - Check cache first
+    const { getCacheLayer, CACHE_KEYS, CACHE_TTLS } = await import("@/lib/cache-layer");
+    const cache = getCacheLayer();
+    
+    // Try to get from cache
+    const cachedAgents = await cache.get(CACHE_KEYS.MARKETPLACE_AGENTS);
+    if (cachedAgents) {
+      return NextResponse.json({
+        agents: cachedAgents,
+        cached: true,
+        cacheHit: true,
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    // CACHE MISS - Query database
     const res = await query<{
       id: string; loop_tag: string; trust_score: number;
       is_business: boolean; persona: string | null; public_description: string | null; agent_bio: string | null;
@@ -48,9 +77,16 @@ export async function GET() {
       };
     });
 
-    return NextResponse.json({ agents });
+    // PHASE 2: CACHE SET - Store in cache for 30 minutes
+    await cache.set(CACHE_KEYS.MARKETPLACE_AGENTS, agents, CACHE_TTLS.MARKETPLACE);
+
+    return NextResponse.json({ agents, cached: false, cacheHit: false, timestamp: new Date().toISOString() });
   } catch (error) {
-    console.error("[marketplace]", error);
-    return NextResponse.json({ agents: [] });
+    // PHASE 1: ERROR TRACKING
+    const { createLogger } = await import("@/lib/error-tracking");
+    const logger = createLogger("marketplace-api");
+    logger.error("Marketplace GET failed", error, { endpoint: "/api/marketplace" });
+    
+    return NextResponse.json({ agents: [], error: "Failed to fetch marketplace", cached: false }, { status: 500 });
   }
 }

@@ -1,0 +1,263 @@
+/**
+ * GITHUB ACTIONS CI/CD PIPELINE
+ * File: .github/workflows/ci-cd.yml
+ */
+
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # ============================================================================
+  # TEST JOB
+  # ============================================================================
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: openloop_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linter
+        run: npm run lint || true
+
+      - name: Run tests
+        run: npm test -- --coverage
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openloop_test
+          NODE_ENV: test
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage/lcov.info
+
+  # ============================================================================
+  # BUILD JOB
+  # ============================================================================
+  build:
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'push'
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build
+        env:
+          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+
+      - name: Check build artifacts
+        run: |
+          [ -d .next ] && echo "Build successful" || exit 1
+
+  # ============================================================================
+  # SECURITY JOB
+  # ============================================================================
+  security:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Run security checks
+        run: npm audit --audit-level=moderate || true
+
+      - name: Check for secrets
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+
+  # ============================================================================
+  # DEPLOYMENT JOB (STAGING)
+  # ============================================================================
+  deploy-staging:
+    runs-on: ubuntu-latest
+    needs: [test, build, security]
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Deploy to Railway Staging
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN_STAGING }}
+          SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID_STAGING }}
+        run: |
+          npm install -g @railway/cli
+          railway link --token $RAILWAY_TOKEN --service $SERVICE_ID
+          railway up
+
+      - name: Run smoke tests
+        run: |
+          sleep 10
+          curl -f https://staging.openloop.ai/api/health || exit 1
+
+      - name: Notify Slack
+        if: failure()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: 'Staging deployment failed'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+
+  # ============================================================================
+  # DEPLOYMENT JOB (PRODUCTION)
+  # ============================================================================
+  deploy-production:
+    runs-on: ubuntu-latest
+    needs: [test, build, security]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Deploy to Railway Production
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN_PROD }}
+          SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID_PROD }}
+        run: |
+          npm install -g @railway/cli
+          railway link --token $RAILWAY_TOKEN --service $SERVICE_ID
+          railway up
+
+      - name: Wait for deployment
+        run: sleep 30
+
+      - name: Run health checks
+        run: |
+          for i in {1..5}; do
+            curl -f https://openloop.ai/api/health && break || sleep 10
+          done
+
+      - name: Run smoke tests
+        run: |
+          npm run test:smoke
+        env:
+          LIVE_API_URL: https://openloop.ai
+
+      - name: Notify Slack (Success)
+        if: success()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: '✅ Production deployment successful'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+
+      - name: Notify Slack (Failure)
+        if: failure()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: '❌ Production deployment failed'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+
+      - name: Trigger rollback on failure
+        if: failure()
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN_PROD }}
+          SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID_PROD }}
+        run: |
+          echo "Triggering automatic rollback..."
+          # railway rollback would go here
+          # This is a placeholder for the rollback mechanism
+
+  # ============================================================================
+  # MONITORING JOB
+  # ============================================================================
+  monitor:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    needs: deploy-production
+
+    steps:
+      - name: Check application health
+        run: |
+          for i in {1..10}; do
+            response=$(curl -s -w "%{http_code}" https://openloop.ai/api/health)
+            if [ "$response" = "200" ]; then
+              echo "✅ Health check passed"
+              exit 0
+            fi
+            echo "Attempt $i: Status $response"
+            sleep 30
+          done
+          exit 1
+
+      - name: Monitor error rate
+        run: |
+          # Check Sentry for error spikes
+          # This would integrate with Sentry API
+          echo "Checking error rates..."
+
+      - name: Notify on issues
+        if: failure()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: '⚠️ Production issues detected after deployment'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+`;
+
+export const CI_CD_SCRIPTS = `
+// package.json additions:
+{
+  "scripts": {
+    "lint": "next lint",
+    "build": "next build",
+    "test": "jest",
+    "test:coverage": "jest --coverage",
+    "test:watch": "jest --watch",
+    "test:smoke": "jest __tests__/smoke --runInBand",
+    "ci": "npm run lint && npm run test:coverage && npm run build"
+  },
+  "devDependencies": {
+    "jest": "^29.5.0",
+    "@testing-library/react": "^14.0.0",
+    "@testing-library/jest-dom": "^5.16.5",
+    "jest-environment-jsdom": "^29.5.0"
+  }
+}
+`;

@@ -6,10 +6,15 @@ import { getRedis } from "@/lib/redis";
 
 const WINDOW_MS = 60_000; // 1 minute
 const LIMITS = {
-  claim:     10,
-  loops_post: 20,
-  chat:      120,
-  api:       300,
+  claim:              10,
+  loops_post:         20,
+  chat:               120,
+  api:                300,
+  marketplace:        500,  // /api/marketplace — high volume allowed
+  activity:           100,  // /api/activity — feed is critical
+  telegram:           100,  // /api/webhooks/telegram — per chatId
+  hire:               30,   // /api/marketplace/hire — real transactions
+  comment:            60,   // POST comments — prevent spam
 };
 
 // In-memory fallback
@@ -61,4 +66,28 @@ export async function checkRateLimitLoopsPost(req: Request): Promise<boolean> {
 export async function checkRateLimitChat(req: Request): Promise<boolean> {
   const ip = getClientIp(req);
   return redisCheck(`rl:chat:${ip}`, LIMITS.chat);
+}
+
+export async function checkRateLimitMarketplace(req: Request): Promise<boolean> {
+  const ip = getClientIp(req);
+  return redisCheck(`rl:marketplace:${ip}`, LIMITS.marketplace);
+}
+
+export async function checkRateLimitActivity(req: Request): Promise<boolean> {
+  const ip = getClientIp(req);
+  return redisCheck(`rl:activity:${ip}`, LIMITS.activity);
+}
+
+export async function checkRateLimitTelegram(chatId: number | string): Promise<boolean> {
+  return redisCheck(`rl:telegram:${chatId}`, LIMITS.telegram);
+}
+
+export async function checkRateLimitHire(req: Request): Promise<boolean> {
+  const ip = getClientIp(req);
+  return redisCheck(`rl:hire:${ip}`, LIMITS.hire);
+}
+
+export async function checkRateLimitComment(req: Request): Promise<boolean> {
+  const ip = getClientIp(req);
+  return redisCheck(`rl:comment:${ip}`, LIMITS.comment);
 }
