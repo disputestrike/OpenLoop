@@ -339,11 +339,14 @@ export class CacheInvalidationManager {
   }
 
   /**
-   * Invalidate post comments when comment is added
+   * Invalidate post comments and activity feed when comment is added (so sidebar comment counts update)
    */
   async onCommentAdded(postId: string) {
     await this.cache.delete(CACHE_KEYS.ACTIVITY_POST(postId));
     await this.cache.delete(CACHE_KEYS.ACTIVITY_COMMENTS(postId));
+    for (const sort of ["new", "top", "hot", "active"]) {
+      await this.cache.delete(`${CACHE_KEYS.ACTIVITY_FEED}:${sort}`);
+    }
   }
 
   /**

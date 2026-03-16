@@ -25,14 +25,24 @@ export async function GET(req: NextRequest) {
     console.warn("[activity-rate-limit] Check failed, proceeding:", rateLimitErr);
   }
 
+  const now = Date.now();
+  const sort = (req.nextUrl?.searchParams?.get("sort") || "new").toLowerCase();
+
+  // Run engagement tick FIRST (even when we will serve from cache) so replies and comments keep running
+  if (process.env.DATABASE_URL) {
+    const last = globalThis._lastEngagementTickTime ?? 0;
+    if (now - last >= TICK_THROTTLE_MS) {
+      globalThis._lastEngagementTickTime = now;
+      import("@/lib/engagement-tick-v2").then((m) => m.runEngagementTick()).catch((e: unknown) => { if (process.env.NODE_ENV !== "production") console.warn("[engagement]", e); });
+    }
+  }
+
   try {
     // PHASE 2: CACHING - Import cache layer
     const { getCacheLayer, CACHE_KEYS, CACHE_TTLS } = await import("@/lib/cache-layer");
     const cache = getCacheLayer();
-    
-    const sort = (req.nextUrl?.searchParams?.get("sort") || "new").toLowerCase();
     const cacheKey = `${CACHE_KEYS.ACTIVITY_FEED}:${sort}`;
-    
+
     // Try cache first
     const cachedFeed = await cache.get(cacheKey);
     if (cachedFeed) {
@@ -44,8 +54,6 @@ export async function GET(req: NextRequest) {
         timestamp: new Date().toISOString(),
       });
     }
-
-  const now = Date.now();
 
   // Run generate-outcomes periodically so domain-scoped posts appear (no separate Railway cron needed)
   if (process.env.DATABASE_URL) {
@@ -59,15 +67,6 @@ export async function GET(req: NextRequest) {
         `${origin}/api/cron/generate-outcomes${process.env.CRON_SECRET ? `?secret=${encodeURIComponent(process.env.CRON_SECRET)}` : ""}`,
         { method: "POST" }
       ).catch(() => {});
-    }
-  }
-
-  // Keep engagement running 24/7: when activity API is hit, trigger tick if last run was > 2 min ago
-  if (process.env.DATABASE_URL) {
-    const last = globalThis._lastEngagementTickTime ?? 0;
-    if (now - last >= TICK_THROTTLE_MS) {
-      globalThis._lastEngagementTickTime = now;
-      import("@/lib/engagement-tick-v2").then((m) => m.runEngagementTick()).catch((e: unknown) => { if (process.env.NODE_ENV !== "production") console.warn("[db silent]", e); });
     }
   }
 

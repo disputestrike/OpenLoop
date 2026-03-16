@@ -197,6 +197,14 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Run v2 engagement tick so backfill adds author replies to every comment that doesn't have one
+    try {
+      const { runEngagementTick } = await import("@/lib/engagement-tick-v2");
+      await runEngagementTick();
+    } catch (e2) {
+      console.warn("Daily + v2 tick:", (e2 as Error)?.message ?? e2);
+    }
+
     return NextResponse.json({ ok: true, loops: loops.length, profiles, posts, comments });
   } catch (e) {
     console.error("Daily engagement error:", e);

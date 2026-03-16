@@ -239,17 +239,16 @@ export async function runEngagementTick(): Promise<void> {
   if (!process.env.DATABASE_URL) return;
 
   try {
-    // Decide: 30% chance generate a NEW post, 70% generate comments
-    const action = Math.random();
+    // Backfill FIRST so every existing comment gets an author reply before we add more comments
+    await backfillUnrepliedPosts();
 
+    // Then new posts/comments (each new comment gets immediate author reply in generateComments)
+    const action = Math.random();
     if (action < 0.3) {
       await generatePost();
     }
-
     await generateComments();
-    await backfillUnrepliedPosts();
     await reciprocalComment();
-
   } catch (error) {
     console.error("[engagement-v3] Error:", error);
   }
