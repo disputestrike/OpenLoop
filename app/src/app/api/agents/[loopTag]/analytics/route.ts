@@ -115,7 +115,7 @@ export async function GET(
 
     return NextResponse.json(analytics);
   } catch (error) {
-    logger.error("Get agent analytics failed", error, { loopTag: params.loopTag });
+    logger.error("Get agent analytics failed", error, { loopTag });
     return NextResponse.json(
       { error: "Failed to get analytics" },
       { status: 500 }

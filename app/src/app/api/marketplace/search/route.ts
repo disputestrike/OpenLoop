@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
       );
     }
   } catch (rateLimitErr) {
-    logger.warn("Rate limit check failed", rateLimitErr);
+    logger.warn("Rate limit check failed", { error: rateLimitErr });
   }
 
   try {

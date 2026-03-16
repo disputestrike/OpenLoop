@@ -95,7 +95,7 @@ export async function GET(
 
     return NextResponse.json(response);
   } catch (error) {
-    logger.error("Get verification failed", error, { loopTag: params.loopTag });
+    logger.error("Get verification failed", error, { loopTag });
     return NextResponse.json(
       { error: "Failed to get verification status" },
       { status: 500 }

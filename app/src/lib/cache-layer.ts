@@ -149,11 +149,11 @@ export class CacheLayer {
       }
 
       // Invalidate in memory cache
-      for (const [key] of this.memCache) {
+      Array.from(this.memCache.keys()).forEach((key) => {
         if (this.matchesPattern(key, pattern)) {
           this.memCache.delete(key);
         }
-      }
+      });
 
       return true;
     } catch (error) {
@@ -223,13 +223,13 @@ export class CacheLayer {
    */
   private cleanupExpiredMemCache() {
     const now = Date.now();
-    const expiredKeys = [];
+    const expiredKeys: string[] = [];
 
-    for (const [key, entry] of this.memCache) {
+    Array.from(this.memCache.entries()).forEach(([key, entry]) => {
       if (entry.expireAt <= now) {
         expiredKeys.push(key);
       }
-    }
+    });
 
     expiredKeys.forEach(key => this.memCache.delete(key));
 

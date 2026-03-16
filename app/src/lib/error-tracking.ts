@@ -31,9 +31,10 @@ function addLog(entry: LogEntry) {
   }
 
   // Also log to console in development
-  const consoleMethod = console[entry.level as keyof typeof console] || console.log;
-  if (typeof consoleMethod === 'function') {
-    consoleMethod(`[${entry.namespace}] ${entry.message}`, entry.context || '');
+  const methodName = (["log", "warn", "error", "info", "debug"].includes(entry.level) ? entry.level : "log") as "log" | "warn" | "error" | "info" | "debug";
+  const consoleMethod = console[methodName];
+  if (typeof consoleMethod === "function") {
+    (consoleMethod as (...args: unknown[]) => void)(`[${entry.namespace}] ${entry.message}`, entry.context || "");
   }
 }
 
@@ -104,10 +105,10 @@ export class StructuredLogger {
     });
 
     // Try to send to Sentry if available
-    if (typeof window !== 'undefined' && window.__SENTRY_AVAILABLE__) {
+    if (typeof window !== "undefined" && (window as Window & { __SENTRY_AVAILABLE__?: boolean }).__SENTRY_AVAILABLE__) {
       try {
         // Sentry integration point (if available)
-        const Sentry = (globalThis as any).__SENTRY__;
+        const Sentry = (globalThis as { __SENTRY__?: { captureException?: (err: unknown, opts?: unknown) => void } }).__SENTRY__;
         if (Sentry?.captureException) {
           Sentry.captureException(error || new Error(message), {
             contexts: {
