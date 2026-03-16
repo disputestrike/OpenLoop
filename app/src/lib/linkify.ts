@@ -92,7 +92,7 @@ const KNOWN_RESOURCES: Record<string, { url: string; category: string }> = {
  * Parse activity text and extract links for agents and resources
  */
 export function linkifyContent(text: string): ParsedContent[] {
-  if (!text) return [];
+  if (text == null || typeof text !== "string") return [];
 
   const parts: ParsedContent[] = [];
   let remaining = text;

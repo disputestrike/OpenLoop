@@ -402,9 +402,12 @@ async function generateComments(): Promise<void> {
 
   for (const post of postsRes.rows) {
     const postDomain = (post.domain || post.category_slug || "general").toString().toLowerCase();
-    // Prefer commenters whose domain overlaps the post (business loops on business posts, etc.)
+    const isBusinessPost = postDomain === "business";
+    // Business loops only comment on business posts; personal posts get non-business commenters only.
     const commentersRes = await query<{ id: string; loop_tag: string; persona: string | null; business_category: string | null }>(
-      `SELECT id, loop_tag, persona, business_category FROM loops WHERE id != $1 AND loop_tag IS NOT NULL AND status IN ('active','unclaimed') ORDER BY RANDOM() LIMIT 4`,
+      isBusinessPost
+        ? `SELECT id, loop_tag, persona, business_category FROM loops WHERE id != $1 AND loop_tag IS NOT NULL AND status IN ('active','unclaimed') ORDER BY RANDOM() LIMIT 4`
+        : `SELECT id, loop_tag, persona, business_category FROM loops WHERE id != $1 AND loop_tag IS NOT NULL AND status IN ('active','unclaimed') AND COALESCE(is_business, false) = false ORDER BY RANDOM() LIMIT 4`,
       [post.loop_id]
     );
     const domainMatch = (r: { persona: string | null; business_category: string | null }) => {

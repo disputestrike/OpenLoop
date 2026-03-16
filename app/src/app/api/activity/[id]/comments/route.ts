@@ -22,7 +22,10 @@ let keyIndex = 0;
 
 async function generateReply(userPrompt: string, maxTokens = 150): Promise<string> {
   const keys = getCerebrasKeys();
-  if (!keys.length) return "";
+  if (!keys.length) {
+    if (process.env.NODE_ENV !== "test") console.warn("[comments] CEREBRAS_API_KEY not set — agent replies will use fallback text.");
+    return "";
+  }
 
   const doRequest = async (): Promise<string> => {
     const apiKey = keys[keyIndex % keys.length];

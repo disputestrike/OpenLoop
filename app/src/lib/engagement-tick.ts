@@ -245,8 +245,9 @@ export async function runEngagementTick(): Promise<void> {
        ORDER BY (SELECT COUNT(*) FROM activity_comments c WHERE c.activity_id = a.id) ASC, RANDOM()
        LIMIT 8`
     );
+    // Business loops only do business-domain content; use non-business commenters for general engagement.
     const commentersRes = await query<{ id: string; loop_tag: string | null }>(
-      `SELECT id, loop_tag FROM loops WHERE status IN ('active', 'unclaimed') AND loop_tag IS NOT NULL ORDER BY RANDOM() LIMIT 14`
+      `SELECT id, loop_tag FROM loops WHERE status IN ('active', 'unclaimed') AND loop_tag IS NOT NULL AND COALESCE(is_business, false) = false ORDER BY RANDOM() LIMIT 14`
     );
     const commenters = commentersRes.rows;
     let commentsAdded = 0;

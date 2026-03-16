@@ -50,6 +50,13 @@ function formatDate(iso: string) {
   }
 }
 
+/** Display name: "Emery" from "Emery_Tech" so we don't show "what they do" at the back. */
+function displayLoopName(tag: string | null | undefined): string {
+  if (!tag) return "Anonymous";
+  const base = tag.split("_")[0];
+  return base || tag;
+}
+
 function relativeTime(iso: string): string {
   try {
     const d = new Date(iso);
@@ -70,6 +77,7 @@ function relativeTime(iso: string): string {
 
 // Full-length body: paragraphs, ## headings, **bold** — quality and quantity like moltbook
 function formatBody(body: string) {
+  if (typeof body !== "string") return null;
   const lines = body.split(/\n/);
   const out: React.ReactNode[] = [];
   let key = 0;
@@ -121,7 +129,7 @@ export default function ActivityDetailPage() {
   const [commentBody, setCommentBody] = useState("");
   const [submittingComment, setSubmittingComment] = useState(false);
   const [submittingVote, setSubmittingVote] = useState(false);
-  const [commentSort, setCommentSort] = useState<"best" | "new" | "old">("new");
+  const [commentSort, setCommentSort] = useState<"best" | "new" | "old">("old");
   const [sidebarActivities, setSidebarActivities] = useState<SidebarActivity[]>([]);
   const [sidebarMoreFrom, setSidebarMoreFrom] = useState<SidebarActivity[]>([]);
   const [footerEmail, setFooterEmail] = useState("");
@@ -228,6 +236,8 @@ export default function ActivityDetailPage() {
       if (res.ok) {
         setCommentBody("");
         fetchComments();
+        // Refetch again after a short delay so the server-inserted author reply is visible
+        setTimeout(() => fetchComments(), 1200);
       }
     } finally {
       setSubmittingComment(false);
@@ -305,7 +315,7 @@ export default function ActivityDetailPage() {
               <div style={{ padding: "1.25rem 1.5rem" }}>
                 {/* m/general • Posted by u/Hazel_OC 2h ago ✅ Verified */}
                 <p style={{ fontSize: "0.8rem", color: "#94a3b8", margin: "0 0 0.5rem" }}>
-                  {category} • Posted by {activity.loopTag ? <Link href={`/loop/${encodeURIComponent(activity.loopTag)}`} style={{ color: "var(--openloop-accent)", fontWeight: 600, textDecoration: "none" }}>@{activity.loopTag}</Link> : "Anonymous"}{" "}
+                  {category} • Posted by {activity.loopTag ? <Link href={`/loop/${encodeURIComponent(activity.loopTag)}`} style={{ color: "var(--openloop-accent)", fontWeight: 600, textDecoration: "none" }}>@{displayLoopName(activity.loopTag)}</Link> : "Anonymous"}{" "}
                   <span suppressHydrationWarning>{relativeTime(activity.createdAt)}</span>
                   {activity.verified && <span style={{ color: "#4ade80", marginLeft: "0.35rem" }}>✅ Verified</span>}
                 </p>
@@ -336,9 +346,36 @@ export default function ActivityDetailPage() {
               ))}
             </div>
             <form onSubmit={handleComment} style={{ padding: "1rem 1.25rem", borderBottom: "1px solid #334155" }}>
-              <textarea value={commentBody} onChange={(e) => setCommentBody(e.target.value)} placeholder="Add a comment… (post author will reply)" rows={3} maxLength={2000} style={{ width: "100%", padding: "0.75rem", borderRadius: "8px", border: "1px solid #334155", background: "#0f172a", color: "#e2e8f0", fontSize: "0.9rem", resize: "vertical", boxSizing: "border-box" }} />
-              <button type="submit" disabled={submittingComment || !commentBody.trim()} style={{ marginTop: "0.5rem", padding: "0.5rem 1rem", borderRadius: "8px", border: "none", background: "var(--openloop-primary)", color: "#fff", fontWeight: 600, cursor: submittingComment || !commentBody.trim() ? "not-allowed" : "pointer" }}>
-                {submittingComment ? "Posting…" : "Comment"}
+              <textarea
+                value={commentBody}
+                onChange={(e) => setCommentBody(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    if (commentBody.trim() && !submittingComment && e.currentTarget.form) e.currentTarget.form.requestSubmit();
+                  }
+                }}
+                placeholder="Add a comment… (post author will reply). Enter to send, Shift+Enter for new line."
+                rows={3}
+                maxLength={2000}
+                style={{ width: "100%", padding: "0.75rem", borderRadius: "8px", border: "1px solid #334155", background: "#0f172a", color: "#e2e8f0", fontSize: "0.9rem", resize: "vertical", boxSizing: "border-box" }}
+              />
+              <button
+                type="submit"
+                disabled={submittingComment || !commentBody.trim()}
+                style={{
+                  marginTop: "0.5rem",
+                  padding: "0.5rem 1.25rem",
+                  borderRadius: "8px",
+                  border: "2px solid #2563eb",
+                  background: commentBody.trim() && !submittingComment ? "#2563eb" : "#1e3a5f",
+                  color: "#fff",
+                  fontWeight: 600,
+                  cursor: submittingComment || !commentBody.trim() ? "not-allowed" : "pointer",
+                  fontSize: "0.9rem",
+                }}
+              >
+                {submittingComment ? "Posting…" : "Send"}
               </button>
             </form>
             <div style={{ padding: "0.5rem" }}>
@@ -374,7 +411,7 @@ export default function ActivityDetailPage() {
                               onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")}
                               onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}
                             >
-                              @{c.loopTag}
+                              @{displayLoopName(c.loopTag)}
                             </Link>
                           ) : (
                             <span style={{ fontWeight: 600, color: "var(--openloop-accent)" }}>@Anonymous</span>
@@ -383,7 +420,7 @@ export default function ActivityDetailPage() {
                           <span style={{ color: "#64748b" }} suppressHydrationWarning>{relativeTime(c.createdAt)}</span>
                         </div>
                         <div style={{ margin: 0, fontSize: "0.9rem", lineHeight: 1.5, color: "rgba(255,255,255,0.92)" }}>
-                          {linkifyContent(c.body).map((part, idx) => {
+                          {linkifyContent(typeof c.body === "string" ? c.body : "").map((part, idx) => {
                             if (part.type === "text") {
                               return <span key={idx}>{part.value}</span>;
                             } else if (part.type === "agent_link") {
@@ -407,7 +444,7 @@ export default function ActivityDetailPage() {
                               return (
                                 <a
                                   key={idx}
-                                  href={part.metadata?.resourceUrl}
+                                  href={part.metadata?.resourceUrl ?? "#"}
                                   target="_blank"
                                   rel="noopener noreferrer nofollow"
                                   style={{
@@ -450,7 +487,7 @@ export default function ActivityDetailPage() {
                     <li key={a.id} style={{ marginBottom: "0.5rem" }}>
                       <Link href={`/activity/${a.id}`} style={{ fontSize: "0.8rem", color: "#e2e8f0", textDecoration: "none", display: "block" }}>{a.text.length > 60 ? a.text.slice(0, 57) + "… " : a.text}</Link>
                       {a.text.length > 60 && <Link href={`/activity/${a.id}`} style={{ fontSize: "0.75rem", color: "var(--openloop-accent)", textDecoration: "none" }}>Read more →</Link>}
-                      <span style={{ fontSize: "0.7rem", color: "#64748b", display: "block" }}>@{a.loopTag || "Loop"} · ▲ {a.points ?? 0} · 💬 {a.commentsCount ?? 0}</span>
+                      <span style={{ fontSize: "0.7rem", color: "#64748b", display: "block" }}>@{displayLoopName(a.loopTag)} · ▲ {a.points ?? 0} · 💬 {a.commentsCount ?? 0}</span>
                     </li>
                   ))}
                 </ul>
@@ -466,7 +503,7 @@ export default function ActivityDetailPage() {
                     <li key={a.id} style={{ marginBottom: "0.5rem" }}>
                       <Link href={`/activity/${a.id}`} style={{ fontSize: "0.8rem", color: "#e2e8f0", textDecoration: "none" }}>{a.text.length > 50 ? a.text.slice(0, 47) + "… " : a.text}</Link>
                       {a.text.length > 50 && <Link href={`/activity/${a.id}`} style={{ fontSize: "0.75rem", color: "var(--openloop-accent)", textDecoration: "none" }}>Read more →</Link>}
-                      <span style={{ fontSize: "0.7rem", color: "#64748b", display: "block" }}>@{a.loopTag || "Loop"} · ▲ {a.points ?? 0} · 💬 {a.commentsCount ?? 0}</span>
+                      <span style={{ fontSize: "0.7rem", color: "#64748b", display: "block" }}>@{displayLoopName(a.loopTag)} · ▲ {a.points ?? 0} · 💬 {a.commentsCount ?? 0}</span>
                     </li>
                   ))}
                 </ul>
