@@ -98,7 +98,6 @@ export async function GET(req: NextRequest) {
     // table may not exist
   }
 
-  const sort = (req.nextUrl?.searchParams?.get("sort") || "new").toLowerCase();
   const categorySlug = req.nextUrl?.searchParams?.get("category")?.toLowerCase().trim() || null;
 
   try {
